@@ -301,9 +301,15 @@ def annotations_to_instances(annos, image_size, mask_format="polygon"):
 
     if len(annos) and "segmentation" in annos[0]:
         segm = [obj["segmentation"] for obj in annos]
-        visible = [obj["visible_mask"] for obj in annos] 
+        #visible = [obj["visible_mask"] for obj in annos] 
+        visible = []
         invisible = []
         for obj in annos:
+            if "visible_mask" in obj:
+                visible.append(obj["visible_mask"])
+            else:
+                visible.append([[0.0,0.0,0.0,0.0,0.0,0.0]])
+                
             if "invisible_mask" in obj:
                 invisible.append(obj["invisible_mask"])
             else:
