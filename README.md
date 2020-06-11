@@ -1,10 +1,21 @@
 # HarvestCNN 
-**HarvestCNN uses ORCNN (https://github.com/waiyulam/ORCNN) and an additional depth regression**
+**HarvestCNN uses ORCNN/Detectron2 (https://github.com/waiyulam/ORCNN) and an additional depth regression**
 
 
 ## Installation
 
 See [INSTALL.md](INSTALL.md).
+
+
+## Run the demo code
+
+- download the pretrained coco weights: 
+https://dl.fbaipublicfiles.com/detectron2/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x/139653917/model_final_2d9806.pkl
+- place the weights-file in a folder called weights in the harvestcnn root directory
+- cd harvestcnn
+- cd demo
+- python demo.py --config-file ../configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml --input ../demo/testImage20150714_084518730.jpg --opts MODEL.WEIGHTS ../weights/model_final_2d9806.pkl
+- Press ESC to close the window
 
 
 ## Citing ORCNN
