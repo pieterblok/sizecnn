@@ -1,6 +1,6 @@
 # HarvestCNN 
-**HarvestCNN uses ORCNN(Detectron2) and an additional depth regression **
-**ORCNN was extracted from: https://github.com/waiyulam/ORCNN **
+**HarvestCNN uses ORCNN(Detectron2) and an additional depth regression**
+**ORCNN was extracted from: https://github.com/waiyulam/ORCNN**
 
 
 ## Installation
