@@ -1,5 +1,5 @@
 # HarvestCNN 
-**HarvestCNN uses ORCNN(https://github.com/waiyulam/ORCNN) and an additional depth regression**
+**HarvestCNN uses ORCNN (https://github.com/waiyulam/ORCNN) and an additional depth regression**
 
 
 ## Installation
