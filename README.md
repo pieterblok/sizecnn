@@ -1,5 +1,6 @@
 # HarvestCNN 
 **Developed by Pieter Blok (pieter.blok@wur.nl)**
+<br/>
 **HarvestCNN uses ORCNN/Detectron2 (https://github.com/waiyulam/ORCNN) and an additional depth regression**
 
 
