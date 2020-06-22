@@ -167,14 +167,15 @@ if __name__ == "__main__":
         cfg.NUM_GPUS = 2
         cfg.DATALOADER.NUM_WORKERS = 2
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1  # only has one class (broccoli)
-        cfg.OUTPUT_DIR = "weights/broccoli_amodal"
+        # cfg.OUTPUT_DIR = "weights/broccoli_amodal"
+        cfg.OUTPUT_DIR = "weights/broccoli_amodal_temp5" # this is a trained model with RGB-RGB visible_mask_head    
         cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
         cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5   # set the testing threshold for this model
 
         # read rgb and xyz image
         imgdir = '/media/pieterdeeplearn/easystore/BroccoliData/20190625'
-        rgbimgname = '20190625_094814750_RGB_1.tif'
-        xyzimgname = '20190625_094814750_Depth_1.tif'
+        rgbimgname = '20190625_081422015_RGB_4.tif'
+        xyzimgname = '20190625_081422015_Depth_4.tif'
        
         model = build_model(cfg)
         process = ProcessImage(model, cfg)
@@ -199,19 +200,44 @@ if __name__ == "__main__":
             #     plt.title('Feature-layer: ' + str(i))
             #     plt.show()
 
-            # this piece of code is a copy-paste of the functionality of the defaultpredictor
-            # proposals, _ = model.proposal_generator(image, features, None)
-            # results, _ = model.roi_heads(image, features, proposals, None)
-            # processed_results = model._postprocess(results, [imgtensor], image.image_sizes)[0]
-
             # https://detectron2.readthedocs.io/tutorials/models.html#partially-execute-a-model
-            proposals, _ = model.proposal_generator(image, features, None)
-            mask_features = [features[f] for f in model.roi_heads.in_features]
-            instances = model.roi_heads._forward_box(mask_features, proposals)
-            mask_features = model.roi_heads.mask_pooler(mask_features, [x.pred_boxes for x in instances])
+            # proposals, _ = model.proposal_generator(image, features, None)
+            # features_for_mask_head = [features[f] for f in model.roi_heads.in_features]
+            # instances = model.roi_heads._forward_box(features_for_mask_head, proposals)
+            # mask_features = model.roi_heads.mask_pooler(features_for_mask_head, [x.pred_boxes for x in instances])
+            # assert instances[0].has("pred_boxes") and instances[0].has("pred_classes")
+            # instances = model.roi_heads.forward_with_given_boxes(features, instances)
 
-            assert instances[0].has("pred_boxes") and instances[0].has("pred_classes")
-            instances = model.roi_heads.forward_with_given_boxes(features, instances)
+            proposals, _ = model.proposal_generator(image, features, None)
+            features_for_mask_head = [features[f] for f in model.roi_heads.in_features]
+            pred_instances = model.roi_heads._forward_box(features_for_mask_head, proposals)
+
+            assert pred_instances[0].has("pred_boxes") and pred_instances[0].has("pred_classes")
+            instances,amodal_mask_logits = model.roi_heads._forward_amodal_mask(features_for_mask_head, pred_instances)
+            # instances,visible_mask_logits = model.roi_heads._forward_visible_mask(features_for_mask_head, pred_instances)
+            # instances = model.roi_heads._forward_invisible_mask(amodal_mask_logits, visible_mask_logits, pred_instances)
+
+            rgb_features1 = features
+            rgb_features2 = model.backbone(image.tensor)
+            
+            features_p2 = rgb_features1['p2'].add(rgb_features2['p2'])
+            features_p3 = rgb_features1['p3'].add(rgb_features2['p3'])
+            features_p4 = rgb_features1['p4'].add(rgb_features2['p4'])
+            features_p5 = rgb_features1['p5'].add(rgb_features2['p5'])
+            features_p6 = rgb_features1['p6'].add(rgb_features2['p6'])
+
+            # for sanity check: do a subtraction instead of an addition:
+            # features_p2 = rgb_features1['p2'].sub(rgb_features2['p2'])
+            # features_p3 = rgb_features1['p3'].sub(rgb_features2['p3'])
+            # features_p4 = rgb_features1['p4'].sub(rgb_features2['p4'])
+            # features_p5 = rgb_features1['p5'].sub(rgb_features2['p5'])
+            # features_p6 = rgb_features1['p6'].sub(rgb_features2['p6'])
+
+            vm_features = {'p2': features_p2, 'p3': features_p3, 'p4': features_p4, 'p5': features_p5, 'p6': features_p6}
+            features_for_visible_mask_head = [vm_features[f] for f in model.roi_heads.in_features]          
+            instances,visible_mask_logits = model.roi_heads._forward_visible_mask(features_for_visible_mask_head, pred_instances)
+            instances = model.roi_heads._forward_invisible_mask(amodal_mask_logits, visible_mask_logits, pred_instances)
+
             processed_results = model._postprocess(instances, [imgtensor], image.image_sizes)[0]
 
             # visualization procedure
