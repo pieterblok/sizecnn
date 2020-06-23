@@ -412,7 +412,6 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
     if torch.cuda.is_available():
-        # this might be needed for a proper definition of the test classes
         # register the amodal datasets 
         register_coco_instances("broccoli_amodal_train", {}, "datasets/broccoli_amodal/train/annotations.json", "datasets/broccoli_amodal/train")
         register_coco_instances("broccoli_amodal_val", {}, "datasets/broccoli_amodal/val/annotations.json", "datasets/broccoli_amodal/val")
@@ -426,7 +425,6 @@ if __name__ == "__main__":
         dataset_dicts_val = DatasetCatalog.get("broccoli_amodal_val")
 
         # configure the inference procedure
-        # resuming from previous checkpoints (5000)
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_orcnn_X_101_32x8d_FPN_3x.yaml"))
         cfg.DATASETS.TRAIN = ("broccoli_amodal_train",)
@@ -502,8 +500,8 @@ if __name__ == "__main__":
         max_iter = 6000    
 
         lowest_loss = 9999
-        Ckp = Checkpointer(model, save_dir = "/home/pieterdeeplearn/harvestcnn/weights/broccoli_amodal_temp5")
-        Ckp.resume_or_load(path = "/home/pieterdeeplearn/harvestcnn/weights/broccoli_amodal_temp1/model_final.pth", resume=True)
+        Ckp = Checkpointer(model, save_dir = "/home/pieterdeeplearn/harvestcnn/weights/broccoli_amodal_temp6")
+        Ckp.resume_or_load(path = "/home/pieterdeeplearn/harvestcnn/weights/broccoli_amodal_visible/model_final.pth", resume=True)
 
         with EventStorage(start_iter) as storage:
             for iter in range(start_iter, max_iter):

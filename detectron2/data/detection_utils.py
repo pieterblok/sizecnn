@@ -208,28 +208,6 @@ def transform_instance_annotations(
                 "Supported types are: polygons as list[list[float] or ndarray],"
                 " COCO-style RLE as a dict.".format(type(segm))
             )
-    
-    if "invisible_mask" in annotation:
-        # each instance contains 1 or more polygons
-        segm = annotation["invisible_mask"]
-        if isinstance(segm, list):
-            # polygons
-            polygons = [np.asarray(p).reshape(-1, 2) for p in segm]
-            annotation["invisible_mask"] = [
-                p.reshape(-1) for p in transforms.apply_polygons(polygons)
-            ]
-        elif isinstance(segm, dict):
-            # RLE
-            mask = mask_util.decode(segm)
-            mask = transforms.apply_segmentation(mask)
-            assert tuple(mask.shape[:2]) == image_size
-            annotation["invisible_mask"] = mask
-        else:
-            raise ValueError(
-                "Cannot transform segmentation of type '{}'!"
-                "Supported types are: polygons as list[list[float] or ndarray],"
-                " COCO-style RLE as a dict.".format(type(segm))
-            )
 
     if "keypoints" in annotation:
         keypoints = transform_keypoint_annotations(
@@ -303,41 +281,30 @@ def annotations_to_instances(annos, image_size, mask_format="polygon"):
         segm = [obj["segmentation"] for obj in annos]
         #visible = [obj["visible_mask"] for obj in annos] 
         visible = []
-        invisible = []
         for obj in annos:
             if "visible_mask" in obj:
                 visible.append(obj["visible_mask"])
             else:
                 visible.append([[0.0,0.0,0.0,0.0,0.0,0.0]])
                 
-            if "invisible_mask" in obj:
-                invisible.append(obj["invisible_mask"])
-            else:
-                invisible.append([[0.0,0.0,0.0,0.0,0.0,0.0]])
-                
         if mask_format == "polygon":
             # gt amodal masks per image 
             a_masks = PolygonMasks(segm)
             # gt visible masks per image 
             v_masks = PolygonMasks(visible)
-            # gt invisible masks per image 
-            i_masks = PolygonMasks(invisible)  
         else:
             assert mask_format == "bitmask", mask_format
             a_masks = []
             v_masks = []
-            i_masks = []
             for segm in segms:
                 if isinstance(segm, list):
                     # polygon
                     a_masks.append(polygons_to_bitmask(segm, *image_size))
                     v_masks.append(polygons_to_bitmask(visible, *image_size))
-                    i_masks.append(polygons_to_bitmask(invisible, *image_size))
                 elif isinstance(segm, dict):
                     # COCO RLE
                     a_masks.append(mask_util.decode(segm))
                     v_masks.append(mask_util.decode(visible))
-                    i_masks.append(mask_util.decode(invisible))
                 elif isinstance(segm, np.ndarray):
                     assert segm.ndim == 2, "Expect segmentation of 2 dimensions, got {}.".format(
                         segm.ndim
@@ -345,7 +312,6 @@ def annotations_to_instances(annos, image_size, mask_format="polygon"):
                     # mask array
                     a_masks.append(segm)
                     v_masks.append(visible)
-                    i_masks.append(invisible)
                 else:
                     raise ValueError(
                         "Cannot convert segmentation of type '{}' to BitMasks!"
@@ -360,14 +326,10 @@ def annotations_to_instances(annos, image_size, mask_format="polygon"):
             v_masks = BitMasks(
                 torch.stack([torch.from_numpy(np.ascontiguousarray(x)) for x in v_masks])
             )
-            i_masks = BitMasks(
-                torch.stack([torch.from_numpy(np.ascontiguousarray(x)) for x in i_masks])
-            )
             
         # original mask head now is amodal mask head 
         target.gt_masks = a_masks
         target.gt_v_masks = v_masks
-        target.gt_i_masks = i_masks
      
     if len(annos) and "keypoints" in annos[0]:
         kpts = [obj.get("keypoints", []) for obj in annos]
@@ -424,8 +386,6 @@ def filter_empty_instances(instances, by_box=True, by_mask=True):
     if instances.has("gt_masks") and by_mask:
         r.append(instances.gt_masks.nonempty())
     if instances.has("gt_v_masks") and by_mask:
-        r.append(instances.gt_masks.nonempty())
-    if instances.has("gt_i_masks") and by_mask:
         r.append(instances.gt_masks.nonempty())
 
     # TODO: can also filter visible keypoints

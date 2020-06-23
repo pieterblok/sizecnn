@@ -341,9 +341,6 @@ class Visualizer:
             if segm == 'pred_masks':
                 masks = np.asarray(predictions.pred_masks)
                 masks = [GenericMask(x, self.output.height, self.output.width) for x in masks]
-            elif segm == 'pred_invisible_masks':
-                masks = np.asarray(predictions.pred_invisible_masks)
-                masks = [GenericMask(x, self.output.height, self.output.width) for x in masks]
             elif segm == 'pred_visible_masks':
                 masks = np.asarray(predictions.pred_visible_masks)
                 masks = [GenericMask(x, self.output.height, self.output.width) for x in masks]
@@ -364,11 +361,6 @@ class Visualizer:
                 assert predictions.has("pred_masks"), "ColorMode.IMAGE_BW requires segmentations"
                 self.output.img = self._create_grayscale_image(
                     (predictions.pred_masks.any(dim=0) > 0).numpy()
-                )
-            elif segm == 'pred_invisible_masks':
-                assert predictions.has("pred_invisible_masks"), "ColorMode.IMAGE_BW requires segmentations"
-                self.output.img = self._create_grayscale_image(
-                    (predictions.pred_invisible_masks.any(dim=0) > 0).numpy()
                 )
             elif segm == 'pred_visible_masks':
                 assert predictions.has("pred_visible_masks"), "ColorMode.IMAGE_BW requires segmentations"

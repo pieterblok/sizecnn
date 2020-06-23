@@ -77,33 +77,6 @@ class AMODALCOCOeval (COCOeval):
             for ann in anns:
                 rle = visibleToRLE(ann,coco)
                 ann['visible_mask'] = rle
-        
-        def invisibleToRLE(ann,coco):
-            """
-            Convert annotation which can be polygons, uncompressed RLE to RLE.
-            :return: binary mask (numpy 2D array)
-            """
-            t = coco.imgs[ann['image_id']]
-            h, w = t['height'], t['width']
-            segm = ann.get("invisible_mask", None)  
-            if type(segm) == list:
-                # polygon -- a single object might consist of multiple parts
-                # we merge all parts into one mask rle code
-                rles = maskUtils.frPyObjects(segm, h, w)
-                rle = maskUtils.merge(rles)
-            elif type(segm['counts']) == list:
-                # uncompressed RLE
-                rle = maskUtils.frPyObjects(segm, h, w)
-            else:
-                # rle
-                rle = ann['invisible_mask']
-            return rle
-        
-        def _toInvisibleMask(anns, coco):
-            # modify ann['segmentation'] by reference
-            for ann in anns:
-                rle = invisibleToRLE(ann,coco)
-                ann['invisible_mask'] = rle
                 
         p = self.params
         if p.useCats:
@@ -120,13 +93,6 @@ class AMODALCOCOeval (COCOeval):
         if p.iouType == 'visible':
             _toVisibleMask(gts, self.cocoGt)
             _toVisibleMask(dts, self.cocoDt)
-        if p.iouType == 'invisible':
-            # remove segm does not have invisible mask in gts 
-            my_occulued_gts = [gt for gt in gts if gt.get("invisible_mask", None) ] 
-            my_large_gts = [gt for gt in my_occulued_gts if gt['area'] > 5000 ]
-            gts = my_large_gts
-            _toInvisibleMask(gts, self.cocoGt)
-            _toInvisibleMask(dts, self.cocoDt)
         
         # set ignore flag
         for gt in gts:
@@ -164,7 +130,7 @@ class AMODALCOCOeval (COCOeval):
         # loop through images, area range, max detection number
         catIds = p.catIds if p.useCats else [-1]
 
-        if p.iouType == 'segm' or p.iouType == 'bbox' or p.iouType == 'visible' or p.iouType == 'invisible':
+        if p.iouType == 'segm' or p.iouType == 'bbox' or p.iouType == 'visible':
             computeIoU = self.computeIoU
         elif p.iouType == 'keypoints':
             computeIoU = self.computeOks
@@ -207,9 +173,6 @@ class AMODALCOCOeval (COCOeval):
         elif p.iouType == 'bbox':
             g = [g['bbox'] for g in gt]
             d = [d['bbox'] for d in dt]
-        elif p.iouType == 'invisible':
-            g = [g['invisible_mask'] for g in gt]
-            d = [d['invisible_mask'] for d in dt]
         else:
             raise Exception('unknown iouType for iou computation')
 

@@ -178,24 +178,6 @@ Category ids in annotations are not in [1, #categories]! We'll apply a mapping f
                         continue  # ignore this instance
                 obj["visible_mask"] = v_mask
                 
-            i_mask = anno.get("invisible_mask", None)
-            if i_mask:  # either list[list[float]] or dict(RLE)
-                if not isinstance(i_mask, dict):
-                    # filter out invalid polygons (< 3 points)
-                    i_mask = [poly for poly in i_mask if len(poly) % 2 == 0 and len(poly) >= 6]
-                    if len(i_mask) == 0:
-                        num_instances_without_valid_i_mask += 1
-                        continue  # ignore this instance
-                obj["invisible_mask"] = i_mask
-#             else:
-#                 i_mask = [[0.0,0.0,0.0,0.0,0.0,0.0]]
-#                 if not isinstance(i_mask, dict):
-#                     # filter out invalid polygons (< 3 points)
-#                     i_mask = [poly for poly in i_mask if len(poly) % 2 == 0 and len(poly) >= 6]
-#                     if len(i_mask) == 0:
-#                         num_instances_without_valid_i_mask += 1
-#                         continue  # ignore this instance
-#                 obj["invisible_mask"] = i_mask
                             
             keypts = anno.get("keypoints", None)
             if keypts:  # list[int]
@@ -403,9 +385,6 @@ def convert_to_coco_dict(dataset_name):
 
             if "visible_mask" in annotation:
                 coco_annotation["visible_mask"] = annotation["visible_mask"]
-            
-            if "invisible_mask" in annotation:
-                coco_annotation["invisible_mask"] = annotation["invisible_mask"]
             
             coco_annotations.append(coco_annotation)
 

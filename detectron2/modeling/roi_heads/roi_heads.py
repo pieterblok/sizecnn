@@ -23,7 +23,6 @@ from .fast_rcnn import FastRCNNOutputLayers, FastRCNNOutputs
 from .keypoint_head import build_keypoint_head, keypoint_rcnn_inference, keypoint_rcnn_loss
 from .mask_head import build_mask_head
 from .mask_visible_head import build_visible_mask_head
-from .mask_invisible_head import build_invisible_mask_head
 from .mask_amodal_head import build_amodal_mask_head
 
 
@@ -762,7 +761,6 @@ and the occlusion mask (occlusion mask head).
         self._init_box_head(cfg)
         self._init_amodal_mask_head(cfg)
         self._init_visible_mask_head(cfg)
-        self._init_invisible_mask_head(cfg)
    
     def _init_box_head(self, cfg):
         # fmt: off
@@ -831,12 +829,6 @@ and the occlusion mask (occlusion mask head).
             cfg, ShapeSpec(channels=in_channels, width=pooler_resolution, height=pooler_resolution)
         )
 
-    def _init_invisible_mask_head(self,cfg):
-        # fmt: off
-        self.mask_on           = cfg.MODEL.MASK_ON
-        if not self.mask_on:
-            return
-        self.invisible_mask_head = build_invisible_mask_head(cfg)
         
     def _forward_amodal_mask(self, features: List[torch.Tensor], instances: List[Instances]):
         """
@@ -892,19 +884,6 @@ and the occlusion mask (occlusion mask head).
             mask_features = self.mask_pooler(features, pred_boxes)
             return self.visible_mask_head(mask_features, instances)
 
-    def _forward_invisible_mask(self,pred_amodal_mask_logits,pred_visible_mask_logits,instances):
-        if not self.mask_on:
-            return {} if self.training else instances
-        
-        if self.training:
-            # The loss is only defined on positive proposals.
-            proposals, _ = select_foreground_proposals(instances, self.num_classes)
-            pred_invisible_mask_logtis = pred_amodal_mask_logits - F.relu(pred_visible_mask_logits)
-            return self.invisible_mask_head(pred_invisible_mask_logtis,proposals)
-        else:
-            pred_invisible_mask_logtis = pred_amodal_mask_logits - F.relu(pred_visible_mask_logits)
-            return self.invisible_mask_head(pred_invisible_mask_logtis, instances)
-
 
     def forward(
         self,
@@ -933,7 +912,6 @@ and the occlusion mask (occlusion mask head).
             losses.update(amodal_mask_loss )
             visible_mask_loss,visible_mask_logits = self._forward_visible_mask(features_list, proposals)
             losses.update(visible_mask_loss)
-            losses.update(self._forward_invisible_mask(amodal_mask_logits, visible_mask_logits,proposals))
             return proposals, losses
         else:
             pred_instances = self._forward_box(features_list, proposals)
@@ -1011,7 +989,6 @@ and the occlusion mask (occlusion mask head).
         features_list = [features[f] for f in self.in_features]
         instances,amodal_mask_logits = self._forward_amodal_mask(features_list, instances)
         instances,visible_mask_logits = self._forward_visible_mask(features_list, instances)
-        instances = self._forward_invisible_mask(amodal_mask_logits, visible_mask_logits, instances)
         return instances
         
         

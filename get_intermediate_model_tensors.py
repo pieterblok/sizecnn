@@ -167,8 +167,8 @@ if __name__ == "__main__":
         cfg.NUM_GPUS = 2
         cfg.DATALOADER.NUM_WORKERS = 2
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1  # only has one class (broccoli)
-        # cfg.OUTPUT_DIR = "weights/broccoli_amodal"
-        cfg.OUTPUT_DIR = "weights/broccoli_amodal_temp5" # this is a trained model with RGB-RGB visible_mask_head    
+        # cfg.OUTPUT_DIR = "weights/broccoli_amodal_visible"
+        cfg.OUTPUT_DIR = "weights/broccoli_amodal_temp6" # this is a trained model with RGB-RGB visible_mask_head    
         cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
         cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5   # set the testing threshold for this model
 
@@ -215,7 +215,6 @@ if __name__ == "__main__":
             assert pred_instances[0].has("pred_boxes") and pred_instances[0].has("pred_classes")
             instances,amodal_mask_logits = model.roi_heads._forward_amodal_mask(features_for_mask_head, pred_instances)
             # instances,visible_mask_logits = model.roi_heads._forward_visible_mask(features_for_mask_head, pred_instances)
-            # instances = model.roi_heads._forward_invisible_mask(amodal_mask_logits, visible_mask_logits, pred_instances)
 
             rgb_features1 = features
             rgb_features2 = model.backbone(image.tensor)
@@ -236,7 +235,6 @@ if __name__ == "__main__":
             vm_features = {'p2': features_p2, 'p3': features_p3, 'p4': features_p4, 'p5': features_p5, 'p6': features_p6}
             features_for_visible_mask_head = [vm_features[f] for f in model.roi_heads.in_features]          
             instances,visible_mask_logits = model.roi_heads._forward_visible_mask(features_for_visible_mask_head, pred_instances)
-            instances = model.roi_heads._forward_invisible_mask(amodal_mask_logits, visible_mask_logits, pred_instances)
 
             processed_results = model._postprocess(instances, [imgtensor], image.image_sizes)[0]
 
@@ -247,5 +245,4 @@ if __name__ == "__main__":
             bbox = instances.pred_boxes.tensor.numpy()
             amodal_masks = instances.pred_masks.numpy()
             modal_masks = instances.pred_visible_masks.numpy()
-            invisible_masks = instances.pred_invisible_masks.numpy()
             process.visualize(original_image , amodal_masks, modal_masks)
