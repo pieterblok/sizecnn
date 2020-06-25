@@ -6,6 +6,7 @@ import os
 import datetime
 import json
 import numpy as np
+import pycocotools.mask as mask_util
 
 from PIL import Image
 
@@ -134,7 +135,6 @@ Category ids in annotations are not in [1, #categories]! We'll apply a mapping f
 
     num_instances_without_valid_segmentation = 0
     num_instances_without_valid_v_mask  = 0
-    num_instances_without_valid_i_mask = 0 
 
     for (img_dict, anno_dict_list) in imgs_anns:
         record = {}
@@ -344,8 +344,13 @@ def convert_to_coco_dict(dataset_name):
                 # Computing areas for instances by counting the pixels
                 segmentation = annotation["segmentation"]
                 # TODO: check segmentation type: RLE, BinaryMask or Polygon
-                polygons = PolygonMasks([segmentation])
-                area = polygons.area()[0].item()
+                if isinstance(segmentation, list):
+                    polygons = PolygonMasks([segmentation])
+                    area = polygons.area()[0].item()
+                elif isinstance(segmentation, dict):  # RLE
+                    area = mask_util.area(segmentation).item()
+                else:
+                    raise TypeError(f"Unknown segmentation type {type(segmentation)}!")
             else:
                 # Computing areas using bounding boxes
                 bbox_xy = BoxMode.convert(bbox, BoxMode.XYWH_ABS, BoxMode.XYXY_ABS)
@@ -380,8 +385,12 @@ def convert_to_coco_dict(dataset_name):
                 coco_annotation["keypoints"] = keypoints
                 coco_annotation["num_keypoints"] = num_keypoints
 
+            # thanks to: https://github.com/ninesinc/detectron2/commit/fdc03295477a115f75b6552475127e83aaa2a465
             if "segmentation" in annotation:
                 coco_annotation["segmentation"] = annotation["segmentation"]
+                if isinstance(coco_annotation["segmentation"], dict):  # RLE
+                    coco_annotation["segmentation"]["counts"] = coco_annotation["segmentation"]["counts"].decode("ascii")
+                    print("decoding is gebeurd!")
 
             if "visible_mask" in annotation:
                 coco_annotation["visible_mask"] = annotation["visible_mask"]
