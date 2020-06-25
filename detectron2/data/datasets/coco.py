@@ -390,7 +390,6 @@ def convert_to_coco_dict(dataset_name):
                 coco_annotation["segmentation"] = annotation["segmentation"]
                 if isinstance(coco_annotation["segmentation"], dict):  # RLE
                     coco_annotation["segmentation"]["counts"] = coco_annotation["segmentation"]["counts"].decode("ascii")
-                    print("decoding is gebeurd!")
 
             if "visible_mask" in annotation:
                 coco_annotation["visible_mask"] = annotation["visible_mask"]
