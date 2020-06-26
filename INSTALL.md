@@ -59,7 +59,9 @@ Tested with: Pytorch 1.4 and torchvision 0.5<br/>
 - pip install black isort flake8 flake8-bugbear flake8-comprehensions
 - pip install -e . <br/> <br/>
 
-**2.5) Check if Pytorch links with CUDA (in the harvestcnn virtual environment, using the terminal):**
+**2.5) Reboot/restart the computer (sudo reboot)** <br/> <br/>
+
+**2.6) Check if Pytorch links with CUDA (in the harvestcnn virtual environment, using the terminal):**
 - python
 - import torch
 - torch.version.cuda *(should print 10.1)*
@@ -67,7 +69,7 @@ Tested with: Pytorch 1.4 and torchvision 0.5<br/>
 - torch.cuda.get_device_name(0) *(should print the name of the first GPU)*
 - quit() <br/> <br/>
 
-**2.6) Check if detectron2 is found in python (in the harvestcnn virtual environment, using the terminal):**
+**2.7) Check if detectron2 is found in python (in the harvestcnn virtual environment, using the terminal):**
 - python
 - import detectron2 *(should not print an error)*
 - from detectron2 import model_zoo *(should not print an error)*
