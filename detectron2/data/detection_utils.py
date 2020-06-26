@@ -278,7 +278,7 @@ def annotations_to_instances(annos, image_size, mask_format="polygon"):
     target.gt_classes = classes
 
     if len(annos) and "segmentation" in annos[0]:
-        segm = [obj["segmentation"] for obj in annos]
+        segms = [obj["segmentation"] for obj in annos]
         #visible = [obj["visible_mask"] for obj in annos] 
         visible = []
         for obj in annos:
@@ -289,7 +289,7 @@ def annotations_to_instances(annos, image_size, mask_format="polygon"):
                 
         if mask_format == "polygon":
             # gt amodal masks per image 
-            a_masks = PolygonMasks(segm)
+            a_masks = PolygonMasks(segms)
             # gt visible masks per image 
             v_masks = PolygonMasks(visible)
         else:
