@@ -27,6 +27,9 @@ if __name__ == "__main__":
     # run on gpu 0 (NVIDIA Geforce GTX 1080Ti) and gpu 1 (NVIDIA Geforce GTX 1070Ti)
     os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
+    # To solely train Mask R-CNN (without the ORCNN head), you first need to comment out the 
+    # lines that involve the loading of the visible masks in the file detectron2/data/detection_utils.py)
+    # comment out these lines: 298, 303, 307, 314, 326-328, 332
     cfg = get_cfg()
     cfg.INPUT.MASK_FORMAT = 'bitmask'
 
