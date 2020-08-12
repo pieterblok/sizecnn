@@ -86,8 +86,17 @@ class regression_dataset(Dataset):
 
                 file1 = open(os.path.join(img_dir, labelname),'r')  
                 labelstr = file1.read()
-                label = float(labelstr)
-                self.data_dict['label'].append(label)
+
+                # train only the diameter
+                d = np.float32(labelstr)
+                self.data_dict['label'].append(d)
+
+                # train the x, y, z and the diameter
+                # x = np.float32(labelstr.split(",")[0])
+                # y = np.float32(labelstr.split(",")[1])
+                # z = np.float32(labelstr.split(",")[2])
+                # d = np.float32(labelstr.split(",")[3])
+                # self.data_dict['label'].append(np.asarray((x, y, z, d)))
                     
     def __len__(self):
         """
@@ -126,23 +135,75 @@ preprocess = transforms.Compose([
 
 test_dataset =  regression_dataset(data_root, train=False, image_shape=256, transform=preprocess)
 print('Length of the test dataset: {}'.format(len(test_dataset)))
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=28, shuffle=True, num_workers=2)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=True, num_workers=2)
 
 # use cuda:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model=torch.load('./diameter_regression_rgb_masks.pth')
+model=torch.load('./weights/D_regression_rgb_masks/epoch_030.pt')
 model.to(device)
 model.eval()
 
 for inputs, labels in test_loader:
     inputs, labels = inputs.to(device), labels.to(device)
-    labels = labels.view(labels.shape[0], 1)
+
+    if labels.ndim == 1:
+        labels = labels.view(labels.shape[0], 1)
+
     output = model(inputs)
 
-real_diameters = labels.data.cpu().numpy()
-predicted_diameters = output.data.cpu().numpy()
+if output.shape[1] == 1:
+    real_d = labels.data.cpu().numpy()
+    real_d = real_d.astype(np.float32)
+    predicted_d = output.data.cpu().numpy()
+    diff_d = np.subtract(real_d, predicted_d)
 
-diff = np.subtract(predicted_diameters, real_diameters)
-overview = np.concatenate((real_diameters, predicted_diameters, diff), axis=1)
-print(overview)
-print("Average difference when testing on {0:.0f} diameters: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff))))
+    overview_d = np.concatenate((real_d, predicted_d, diff_d), axis=1)
+    np.set_printoptions(formatter={'float_kind':'{:f}'.format})
+
+    print("Overview D:")
+    print(overview_d)
+    print()
+    print("Average error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_d))))
+    print("Biggest error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.max(np.abs(diff_d))))
+    
+    plt.hist(diff_d, 30)
+    plt.show()
+
+
+elif output.shape[1] == 4:
+    real_x = labels[:,0].data.cpu().numpy()
+    predicted_x = output[:,0].data.cpu().numpy()
+    diff_x = np.subtract(real_x, predicted_x)
+    overview_x = np.concatenate((np.expand_dims(real_x, axis=1), np.expand_dims(predicted_x, axis=1), np.expand_dims(diff_x, axis=1)), axis=1)
+    print("Overview X:")
+    print(overview_x)
+    print()
+
+    real_y = labels[:,1].data.cpu().numpy()
+    predicted_y = output[:,1].data.cpu().numpy()
+    diff_y = np.subtract(real_y, predicted_y)
+    overview_y = np.concatenate((np.expand_dims(real_y, axis=1), np.expand_dims(predicted_y, axis=1), np.expand_dims(diff_y, axis=1)), axis=1)
+    print("Overview Y:")
+    print(overview_y)
+    print()
+
+    real_z = labels[:,2].data.cpu().numpy()
+    predicted_z = output[:,2].data.cpu().numpy()
+    diff_z = np.subtract(real_z, predicted_z)
+    overview_z = np.concatenate((np.expand_dims(real_z, axis=1), np.expand_dims(predicted_z, axis=1), np.expand_dims(diff_z, axis=1)), axis=1)
+    print("Overview Z:")
+    print(overview_z)
+    print()
+
+    real_d = labels[:,3].data.cpu().numpy()
+    predicted_d = output[:,3].data.cpu().numpy()
+    diff_d = np.subtract(real_d, predicted_d)
+    overview_d = np.concatenate((np.expand_dims(real_d, axis=1), np.expand_dims(predicted_d, axis=1), np.expand_dims(diff_d, axis=1)), axis=1)
+    print("Overview D:")
+    print(overview_d)
+    print()
+
+    print("Average error of X when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_x))))
+    print("Average error of Y when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_y))))
+    print("Average error of Z when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_z))))
+    print("Average error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_d))))

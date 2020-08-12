@@ -16,6 +16,7 @@ import os
 import numpy as np
 
 from PIL import Image
+import time
 
 # this class is altered from class MonkeySpecies10Dataset from the opencv course (week 7)
 class regression_dataset(Dataset):
@@ -86,9 +87,18 @@ class regression_dataset(Dataset):
 
                 file1 = open(os.path.join(img_dir, labelname),'r')  
                 labelstr = file1.read()
-                # label = (float(labelstr.split(",")[0]), float(labelstr.split(",")[1]), float(labelstr.split(",")[2]), float(labelstr.split(",")[3]))
-                label = float(labelstr)
-                self.data_dict['label'].append(label)
+
+                # train only the diameter
+                d = np.float32(labelstr)
+                self.data_dict['label'].append(d)
+
+                # train the x, y, z and the diameter
+                # x = np.float32(labelstr.split(",")[0])
+                # y = np.float32(labelstr.split(",")[1])
+                # z = np.float32(labelstr.split(",")[2])
+                # d = np.float32(labelstr.split(",")[3])
+                # self.data_dict['label'].append(np.asarray((x, y, z, d)))
+
                     
     def __len__(self):
         """
@@ -134,24 +144,13 @@ print('Length of the test dataset: {}'.format(len(test_dataset)))
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=9, shuffle=True, num_workers=2)
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=9, shuffle=True, num_workers=2)
 
-# plt.rcParams["figure.figsize"] = (9, 9)
-# plt.figure
-# for images, labels in test_loader:
-#     for i in range(len(labels)):
-#         plt.subplot(3, 3, i+1)
-#         img = F.to_pil_image(images[i])
-#         plt.imshow(img)
-#         plt.gca().set_title('Target: {0}'.format(labels[i]))
-#     plt.show()
-#     break
-
 # use cuda:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = models.resnet50(pretrained=True)
 
 # Freeze parameters so we don't backprop through them
-for param in model.parameters():
-    param.requires_grad = False
+# for param in model.parameters():
+#     param.requires_grad = False
     
 model.fc = nn.Sequential(nn.Linear(2048, 512),
                                  nn.ReLU(),
@@ -160,61 +159,95 @@ model.fc = nn.Sequential(nn.Linear(2048, 512),
 
 print(model)
 
-# test_performance: 18.5 mm
-# criterion = nn.L1Loss()
-# optimizer = optim.SGD(model.fc.parameters(), lr=0.001, momentum=0.9)
-
-# test_performance: 15.3 mm
-criterion = nn.L1Loss()
-optimizer = optim.Adam(model.fc.parameters(), lr=0.005)
+# error on train-set: 8.6 mm (avg), 22.6 mm (max)
+# error on test-set: 7.8 mm (avg), 22.2 mm (max)
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 model.to(device)
 
-epochs = 20
-steps = 0
-running_loss = 0
-print_every = 10
-train_losses, test_losses = [], []
+# training loop extracted from: https://github.com/spmallick/learnopencv/blob/master/Image-Classification-in-PyTorch/image_classification_using_transfer_learning_in_pytorch.ipynb
+epochs = 50
+start = time.time()
+history = []
+save_path = './weights/D_regression_rgb_masks'
 
 for epoch in range(epochs):
-    for inputs, labels in train_loader:
-        steps += 1
-        inputs, labels = inputs.to(device), labels.to(device)
-        labels = labels.view(labels.shape[0], 1)
+    epoch_start = time.time()
+    print("Epoch: {}/{}".format(epoch+1, epochs))
+    
+    # Set to training mode
+    model.train()
+    
+    # Loss within the epoch
+    train_loss = 0.0  
+    valid_loss = 0.0
+    
+    for i, (inputs, labels) in enumerate(train_loader):
 
-        optimizer.zero_grad()
-        logps = model.forward(inputs)
-        loss = criterion(logps, labels)
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        if labels.ndim == 1:
+            labels = labels.view(labels.shape[0], 1)
         
-        if steps % print_every == 0:
-            test_loss = 0
-            accuracy = 0
-            model.eval()
-            with torch.no_grad():
-                for inputs, labels in test_loader:
-                    inputs, labels = inputs.to(device), labels.to(device)
-                    labels = labels.view(labels.shape[0], 1)
+        # Clean existing gradients
+        optimizer.zero_grad()
+        
+        # Forward pass - compute outputs on input data using the model
+        outputs = model(inputs)
+        
+        # Compute loss
+        loss = criterion(outputs, labels)
+        
+        # Backpropagate the gradients
+        loss.backward()
+        
+        # Update the parameters
+        optimizer.step()
+        
+        # Compute the total loss for the batch and add it to train_loss
+        train_loss += loss.item() * inputs.size(0)
+        
+        # print("Batch number: {:03d}, Training: Loss: {:.4f}".format(i, loss.item()))
 
-                    logps = model.forward(inputs)
-                    batch_loss = criterion(logps, labels)
-                    test_loss += batch_loss.item()
+        
+    # Validation - No gradient tracking needed
+    with torch.no_grad():
 
-            train_losses.append(running_loss/len(train_loader))
-            test_losses.append(test_loss/len(test_loader))                    
-            print("Epoch:" + str(epoch))
-            print("Train loss:" + str(running_loss/len(train_loader)))
-            print("Test loss:" + str(test_loss/len(test_loader)))
-            running_loss = 0
-            model.train()
+        # Set to evaluation mode
+        model.eval()
 
+        # Validation loop
+        for j, (inputs, labels) in enumerate(test_loader):
+            inputs = inputs.to(device)
+            labels = labels.to(device)
 
-PATH = './diameter_regression_rgb_masks.pth'
+            if labels.ndim == 1:
+                labels = labels.view(labels.shape[0], 1)
 
-# only save the weights:
-# torch.save(model.state_dict(), PATH)
+            # Forward pass - compute outputs on input data using the model
+            outputs = model(inputs)
 
-# save the entire model (for first checking):
-torch.save(model, PATH)
+            # Compute loss
+            loss = criterion(outputs, labels)
+
+            # Compute the total loss for the batch and add it to valid_loss
+            valid_loss += loss.item() * inputs.size(0)
+
+            # print("Validation Batch number: {:03d}, Validation: Loss: {:.4f}".format(j, loss.item()))
+        
+    # Find average training loss
+    avg_train_loss = train_loss/len(train_dataset) 
+
+    # Find average training loss 
+    avg_valid_loss = valid_loss/len(test_dataset)
+
+    history.append([avg_train_loss, avg_valid_loss])
+            
+    epoch_end = time.time()
+
+    print("Training loss: {:.4f}, Validation loss : {:.4f}, Time: {:.4f}s".format(avg_train_loss, avg_valid_loss, epoch_end-epoch_start))
+    
+    # Save the model for every epoch:
+    torch.save(model, save_path+'/epoch_'+str(epoch+1).zfill(3)+'.pt')
