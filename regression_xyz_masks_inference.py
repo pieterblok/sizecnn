@@ -1,6 +1,7 @@
 # thanks to: https://github.com/cfotache/pytorch_imageclassifier
 # thanks to: https://towardsdatascience.com/how-to-train-an-image-classifier-in-pytorch-and-use-it-to-perform-basic-inference-on-single-images-99465a1e9bf5
 # thanks to: Deep Learning with PyTorch course from opencv (week 7)
+# thanks to: https://discuss.pytorch.org/t/how-to-classify-single-image-using-loaded-net/1411
 
 import torch
 from torch import nn
@@ -9,6 +10,7 @@ from torch import optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms, models
 from torchvision.transforms import functional as F
+from torch.autograd import Variable
 
 import matplotlib.pyplot as plt
 
@@ -19,6 +21,7 @@ from PIL import Image
 
 # specifically needed to work with float32 tiff files
 import skimage.transform
+import csv
 
 # this class is altered from class MonkeySpecies10Dataset from the opencv course (week 7)
 class regression_dataset(Dataset):
@@ -77,7 +80,7 @@ class regression_dataset(Dataset):
             
         # validation data path, this will be used as data root if train = False
         else:
-            img_dir = os.path.join(data_root, 'validation')
+            img_dir = os.path.join(data_root, 'test')
             
         for img in os.listdir(img_dir):
             if img.endswith(".jpg") or img.endswith(".png") or img.endswith(".tiff") or img.endswith(".npy"):
@@ -130,21 +133,20 @@ class regression_dataset(Dataset):
             image = image[startx:startx+224, starty:starty+224, :]
 
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
-            
             # from all masks these are the extremes:
-            # min_x = float(-173.15782)
-            # max_x = float(266.65762)
-            # min_y = float(-266.70273)
-            # max_y = float(210.61345)
-            # min_z = float(0)
-            # max_z = float(751.0)
+            # min_x: -173.15782
+            # max_x: 266.65762
+            # min_y: -231.14442
+            # max_y: 210.61345
+            # min_z: 0.0
+            # max_z: 751.0
 
             min_x = float(-267)
             max_x = float(267)
-            min_y = float(-267)
-            max_y = float(267)
+            min_y = float(-232)
+            max_y = float(232)
             min_z = float(0)
-            max_z = float(751)
+            max_z = float(755)
             
             image[:,:,0] = (image[:,:,0] - min_x) / (max_x - min_x)
             image[:,:,1] = (image[:,:,1] - min_y) / (max_y - min_y)
@@ -163,82 +165,60 @@ class regression_dataset(Dataset):
 
 
 # data root directory
-data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20200713_size_experiment_realsense/xyz_masks'
+data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks'
 
-preprocess = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+preprocess = transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5))
 
-test_dataset =  regression_dataset(data_root, train=False, image_shape=256, transform=preprocess)
+test_dataset =  regression_dataset(data_root, train=False, image_shape=224, transform=preprocess)
 print('Length of the test dataset: {}'.format(len(test_dataset)))
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=True, num_workers=2)
 
 # use cuda:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = torch.load('./weights/D_regression_xyz_masks/epoch_046.pt')
+model = torch.load('./weights/Dreal_regression_Resnext101_32x8d_xyz_masks_400x400pixels_4channel/epoch_199.pt')
 model.to(device)
 model.eval()
 
-for inputs, labels in test_loader:
-    inputs, labels = inputs.to(device), labels.to(device)
+diameters = []
+diffs = []
 
-    if labels.ndim == 1:
-        labels = labels.view(labels.shape[0], 1)
+writedir1 = "/home/pieterdeeplearn/harvestcnn/results/dl_regression_4channel"
 
-    output = model(inputs)
+with open(os.path.join(writedir1, 'broccoli_diameter_regression.csv'), 'w', newline='') as csvfile:
+    csvwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
+    csvwriter.writerow(['plant_id', 'real-world diameter (mm)', 'diameter regression (mm)', 'difference in diameter (mm)'])
+
+
+for i in range(len(test_dataset)):
+    image, gt = regression_dataset.__getitem__(test_dataset, i)
+    image_path = test_dataset.data_dict['image_path'][i]
+    plant_id = int(image_path.split("/")[-1].split("_")[2].split("plant")[-1])
+    image = Variable(image, requires_grad=True)
+    image = image.unsqueeze(0)
+    image = image.to(device)
+
+    output = model(image)
+    prediction = output.data.cpu().numpy()
+    pred = round(float(prediction.ravel()), 1)
+    diff = round(float(np.subtract(gt, prediction)), 1)
+    diameters.append([gt, pred, diff])
+    diffs.append(diff)
+
+    with open(os.path.join(writedir1, 'broccoli_diameter_regression.csv'), 'a', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow([plant_id, round(gt, 1), pred, diff])
+
 
 np.set_printoptions(formatter={'float_kind':'{:f}'.format})
 
-if output.shape[1] == 1:
-    real_d = labels.data.cpu().numpy()
-    real_d = real_d.astype(np.float32)
-    predicted_d = output.data.cpu().numpy()
-    diff_d = np.subtract(real_d, predicted_d)
+print("Diameters overview:")
+for i in range(len(diameters)):
+    print(diameters[i])
+print()
+print("Average error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diffs))))
+print("Biggest error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.max(np.abs(diffs))))
 
-    overview_d = np.concatenate((real_d, predicted_d, diff_d), axis=1)
-
-    print("Overview D:")
-    print(overview_d)
-    print()
-    print("Average error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_d))))
-    print("Biggest error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.max(np.abs(diff_d))))
-    
-    plt.hist(diff_d, 30)
-    plt.show()
-
-
-elif output.shape[1] == 4:
-    real_x = labels[:,0].data.cpu().numpy()
-    predicted_x = output[:,0].data.cpu().numpy()
-    diff_x = np.subtract(real_x, predicted_x)
-    overview_x = np.concatenate((np.expand_dims(real_x, axis=1), np.expand_dims(predicted_x, axis=1), np.expand_dims(diff_x, axis=1)), axis=1)
-    print("Overview X:")
-    print(overview_x)
-    print()
-
-    real_y = labels[:,1].data.cpu().numpy()
-    predicted_y = output[:,1].data.cpu().numpy()
-    diff_y = np.subtract(real_y, predicted_y)
-    overview_y = np.concatenate((np.expand_dims(real_y, axis=1), np.expand_dims(predicted_y, axis=1), np.expand_dims(diff_y, axis=1)), axis=1)
-    print("Overview Y:")
-    print(overview_y)
-    print()
-
-    real_z = labels[:,2].data.cpu().numpy()
-    predicted_z = output[:,2].data.cpu().numpy()
-    diff_z = np.subtract(real_z, predicted_z)
-    overview_z = np.concatenate((np.expand_dims(real_z, axis=1), np.expand_dims(predicted_z, axis=1), np.expand_dims(diff_z, axis=1)), axis=1)
-    print("Overview Z:")
-    print(overview_z)
-    print()
-
-    real_d = labels[:,3].data.cpu().numpy()
-    predicted_d = output[:,3].data.cpu().numpy()
-    diff_d = np.subtract(real_d, predicted_d)
-    overview_d = np.concatenate((np.expand_dims(real_d, axis=1), np.expand_dims(predicted_d, axis=1), np.expand_dims(diff_d, axis=1)), axis=1)
-    print("Overview D:")
-    print(overview_d)
-    print()
-
-    print("Average error of X when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_x))))
-    print("Average error of Y when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_y))))
-    print("Average error of Z when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_z))))
-    print("Average error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diff_d))))
+plt.hist(diffs)
+plt.title("Difference between ground truth and regression network")
+plt.xlabel("Difference (mm)")
+plt.ylabel("Occurence")
+plt.show()

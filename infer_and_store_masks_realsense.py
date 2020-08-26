@@ -31,6 +31,7 @@ from detectron2.checkpoint import DetectionCheckpointer
 import open3d as o3d
 from pyexcel_ods import get_data
 from tifffile import imsave
+import csv
 
 class ProcessImage:
     def __init__(self, model, cfg):
@@ -100,7 +101,7 @@ class ProcessImage:
 
     
     # do not use this function in the final code (it's not very fast) but use it purely to visualize the intermediate steps for debugging
-    def visualize(self, img, amodal_masks, modal_masks):
+    def visualize(self, img, bbox, amodal_masks, modal_masks):
         amodal_masks = amodal_masks.astype(dtype=np.uint8)
         modal_masks = modal_masks.astype(dtype=np.uint8)
         max_height = 900
@@ -130,6 +131,10 @@ class ProcessImage:
             height, width = img.shape[:2]
             img_mask = cv2.addWeighted(img,1,all_masks,0.5,0)
 
+            for k in range (amodal_maskstransposed.shape[-1]):
+                x1, y1, x2, y2 = bbox[k, :]
+                cv2.rectangle(img_mask, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 1)
+
             if max_height < height or max_width < width: # only shrink if img is bigger than required
                 scaling_factor = max_height / float(height) # get scaling factor
                 if max_width/float(width) < scaling_factor:
@@ -158,7 +163,7 @@ class ProcessImage:
                 cv2.destroyAllWindows()
 
 
-    def postprocess(self, xyzimg, masks, max_depth_range_broc=100, max_depth_contribution=0.04):
+    def postprocess(self, xyzimg, masks, amodal_masks, max_depth_range_broc=110, max_depth_contribution=0.005):
         masks = masks.astype(np.uint8)
         x = np.expand_dims(xyzimg[:,:,0], axis=2)
         y = np.expand_dims(xyzimg[:,:,1], axis=2)
@@ -176,6 +181,8 @@ class ProcessImage:
             md, mh, mw = masks.shape
             masks_final = np.zeros((md,mh,mw),dtype=np.uint8)
             maskstransposed = masks.transpose(1,2,0) # transform the mask in the same format as the input image array (h,w,num_dets)
+            amodalmaskstransposed = amodal_masks.transpose(1,2,0)
+            
             zts = np.zeros(maskstransposed.shape[-1])
             zes = np.zeros(maskstransposed.shape[-1])
             cXs = np.zeros(maskstransposed.shape[-1],dtype=np.uint16)
@@ -184,39 +191,27 @@ class ProcessImage:
 
             for i in range (maskstransposed.shape[-1]):
                 masksel = maskstransposed[:,:,i]
-                ret,broc_mask = cv2.threshold((masksel*255).astype(np.uint8),1,255,cv2.THRESH_BINARY)
-                output = cv2.connectedComponentsWithStats(broc_mask)
-                num_labels = output[0] # The first cell is the number of labels
-                labels = output[1] # The second cell is the label matrix
-                stats = output[2] # The third cell is the stat matrix
-                centroids = output[3] # The fourth cell is the centroid matrix
+                amodalmasksel = amodalmaskstransposed[:,:,i]
 
-                region_areas = []
-
-                for label in range(1,num_labels):
-                    region_areas.append(stats[label, cv2.CC_STAT_AREA])
-
-                # procedure to remove the very small separated broccoli masks
-                if len(region_areas) > 1:
-                    for w in range(len(np.asarray(region_areas))):
-                        region_area = np.asarray(region_areas)[w]
-                        if region_area < 100:
-                            masksel = np.where(labels==(w+1), 0, masksel)                
-
-                contours, hierarchy = cv2.findContours((masksel*255).astype(np.uint8),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+                contours, hierarchy = cv2.findContours((amodalmasksel*255).astype(np.uint8),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
                 cnt = np.concatenate(contours)
-                (x,y),radius = cv2.minEnclosingCircle(cnt)
+                area = cv2.contourArea(cnt)
+                equi_diameter = np.sqrt(4*area/np.pi)
+
+                M = cv2.moments(cnt)
+                x = M["m10"] / M["m00"]
+                y = M["m01"] / M["m00"]
 
                 # black_img = np.zeros((mh,mw),dtype=np.uint8)
                 # cntimg = cv2.drawContours(black_img, contours, -1, (255), 1)
                 # cv2.circle(cntimg, (int(x), int(y)), 7, (255), -1)
-                # cv2.circle(cntimg, (int(x), int(y)), int(radius),(255),2)
+                # cv2.circle(cntimg, (int(x), int(y)), int(equi_diameter/2),(255),1)
                 # cv2.imshow("contours",cntimg)
                 # cv2.waitKey(0)
 
                 cXs[i] = int(x)
                 cYs[i] = int(y)
-                diameters[i] = radius*2
+                diameters[i] = equi_diameter 
 
                 masksel_bool = masksel.astype(np.bool) # convert the mask to a boolean mask where ones become True and zeros False
                 
@@ -311,7 +306,7 @@ class ProcessImage:
         return z, zts, zes, masks_final, cXs, cYs, diameters
 
 
-    def visualize_masks(self, img, z, boxes, masks, zt, ze, cXs, cYs, diameters, diametersmm, real_diameter):       
+    def visualize_masks(self, img, z, boxes, masks, amodal_masks, zt, ze, cXs, cYs, diameters, diametersmm, idx, real_diameter, real_height):       
         masks = masks.astype(np.uint8)
         height, width = z.shape[:2]
         max_height = 700
@@ -328,6 +323,8 @@ class ProcessImage:
 
         if masks.any():
             maskstransposed = masks.transpose(1,2,0) # transform the mask in the same format as the input image array (h,w,num_dets)
+            amodalmaskstransposed = amodal_masks.transpose(1,2,0)
+
             red_mask = np.zeros((maskstransposed.shape[0],maskstransposed.shape[1]),dtype=np.uint8)
             blue_mask = np.zeros((maskstransposed.shape[0],maskstransposed.shape[1]),dtype=np.uint8)
             green_mask = np.zeros((maskstransposed.shape[0],maskstransposed.shape[1]),dtype=np.uint8)
@@ -337,9 +334,11 @@ class ProcessImage:
             
             for i in range (maskstransposed.shape[-1]):
                 masksel = np.expand_dims(maskstransposed[:,:,i],axis=2).astype(np.uint8) # select the individual masks
-                
+                amodalmasksel = np.expand_dims(amodalmaskstransposed[:,:,i],axis=2).astype(np.uint8)
+
                 bbox = boxes[i].astype(np.uint16)
                 masksel = masksel[bbox[1]:bbox[3],bbox[0]:bbox[2]] # crop the mask to the boxing box to reduce memory load
+                amodalmasksel = amodalmasksel[bbox[1]:bbox[3],bbox[0]:bbox[2]]
                 zsel = z[bbox[1]:bbox[3],bbox[0]:bbox[2]] # crop the z-image to the boxing box to reduce memory load
 
                 z_mask = np.multiply(zsel,masksel) # clip to the z-values only to the region of the mask, but keep the matrix dimensions intact for visualization
@@ -356,9 +355,13 @@ class ProcessImage:
                 z_img = z_img.astype(np.uint8) # make the 8-bit image of the z-values for visualization
                 z_img_final[bbox[1]:bbox[3],bbox[0]:bbox[2]] = z_img
 
+                amask_diff = np.subtract(amodalmasksel,masksel)
+                amask_diff = amask_diff.reshape(amask_diff.shape[0],amask_diff.shape[1])
+                red_mask[bbox[1]:bbox[3],bbox[0]:bbox[2]] = amask_diff
+
                 mask_diff = np.subtract(masksel,z_mask_final_binary)
                 mask_diff = mask_diff.reshape(mask_diff.shape[0],mask_diff.shape[1])
-                red_mask[bbox[1]:bbox[3],bbox[0]:bbox[2]] = mask_diff
+                blue_mask[bbox[1]:bbox[3],bbox[0]:bbox[2]] = mask_diff
 
                 z_mask_final_binary = z_mask_final_binary.reshape(z_mask_final_binary.shape[0],z_mask_final_binary.shape[1])
                 green_mask[bbox[1]:bbox[3],bbox[0]:bbox[2]] = z_mask_final_binary
@@ -374,65 +377,64 @@ class ProcessImage:
             z3 = cv2.cvtColor(z_img_final,cv2.COLOR_GRAY2RGB)  
 
             img_mask = cv2.addWeighted(img,1,all_masks,0.5,0) # overlay the RGB image with the red full mask
-            zimg_mask = cv2.addWeighted(z3,1,all_masks,0.5,0) # overlay the z3 image with the red full mask
+            zimg_mask = cv2.addWeighted(z3,1,all_masks,0.6,0) # overlay the z3 image with the red full mask
 
             if z_negative:
                 zt = np.multiply(zt, -1)
                 ze = np.multiply(ze, -1)
 
             for k in range(cXs.size):
-                cv2.circle(img_mask, (cXs[k], cYs[k]), 7, (255, 255, 255), -1)
-                cv2.circle(img_mask, (cXs[k], cYs[k]), int(diameters[k]/2),(255,0,0),3)
-                cv2.putText(img_mask, "Z-top: {:.1f} mm".format(zt[k]),(cXs[k]+10,cYs[k]-15),cv2.FONT_HERSHEY_DUPLEX, 1, (255,255,255))
-                cv2.putText(img_mask, "Z-edge: {:.1f} mm".format(ze[k]),(cXs[k]+10,cYs[k]+20),cv2.FONT_HERSHEY_DUPLEX, 1, (255,255,255))
-                cv2.putText(img_mask, "Diameter: {:.1f} mm".format(diametersmm[k]),(cXs[k]+10,cYs[k]+55),cv2.FONT_HERSHEY_DUPLEX, 1, (255,255,255))
-                cv2.putText(img_mask, "Real diameter: {} mm".format(real_diameter),(cXs[k]+10,cYs[k]+90),cv2.FONT_HERSHEY_DUPLEX, 1, (255,255,255))
+                cv2.circle(img_mask, (cXs[k], cYs[k]), 7, (0, 0, 0), -1)
 
                 cv2.circle(zimg_mask, (cXs[k], cYs[k]), 7, (0, 0, 0), -1)
-                cv2.circle(zimg_mask, (cXs[k], cYs[k]), int(diameters[k]/2), (255,0,0), 3)
-                cv2.putText(zimg_mask, "Z-top: {:.1f} mm".format(zt[k]),(cXs[k]+10,cYs[k]-15),cv2.FONT_HERSHEY_DUPLEX, 1, (0,0,0))
-                cv2.putText(zimg_mask, "Z-edge: {:.1f} mm".format(ze[k]),(cXs[k]+10,cYs[k]+20),cv2.FONT_HERSHEY_DUPLEX, 1, (0,0,0))
-                cv2.putText(zimg_mask, "Diameter: {:.1f} mm".format(diametersmm[k]),(cXs[k]+10,cYs[k]+55),cv2.FONT_HERSHEY_DUPLEX, 1, (0,0,0))
-                cv2.putText(zimg_mask, "Real diameter: {} mm".format(real_diameter),(cXs[k]+10,cYs[k]+90),cv2.FONT_HERSHEY_DUPLEX, 1, (0,0,0))
 
-            if max_height < height or max_width < width: # only shrink if img is bigger than required
-                scaling_factor = max_height / float(height) # get scaling factor
-                if max_width/float(width) < scaling_factor:
-                    scaling_factor = max_width / float(width)
-                img_mask = cv2.resize(img_mask, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_LINEAR) # resize image
-                zimg_mask = cv2.resize(zimg_mask, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_LINEAR) # resize image
+                if k == idx:
+                    bbox = boxes[k].astype(np.uint16)
+                    font_face = cv2.FONT_HERSHEY_DUPLEX
+                    font_scale = 1
+                    font_thickness = 1
 
-            cv2.namedWindow("RGB")
-            cv2.moveWindow("RGB", 0, 0)
-            cv2.imshow("RGB", img_mask) # Show image
+                    text_str1 = "Real diameter: {} mm".format(real_diameter)
+                    text_str2 = "Estimation: {:.1f} mm".format(diametersmm[k])
+                    
+                    text_w1, text_h1 = cv2.getTextSize(text_str1, font_face, font_scale, font_thickness)[0]
+                    text_w2, text_h2 = cv2.getTextSize(text_str2, font_face, font_scale, font_thickness)[0]
 
-            cv2.namedWindow("Depth")
-            cv2.moveWindow("Depth", max_width+100, 0)
-            cv2.imshow("Depth" , zimg_mask)
-            cv2.waitKey(0)
-      
+                    text_pt1 = (bbox[0]-400, (cYs[k]-15))
+                    text_pt2 = (bbox[0]-400, (cYs[k]+20))
+                    text_color1 = [255, 255, 255]
+                    text_color2 = [0, 0, 0]
+
+                    cv2.rectangle(img_mask, (text_pt1[0], text_pt1[1] + 7), (text_pt1[0] + text_w1, text_pt1[1] - text_h1 - 7), text_color1, -1)
+                    cv2.putText(img_mask, text_str1, text_pt1, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
+                    cv2.rectangle(img_mask, (text_pt2[0], text_pt2[1] + 7), (text_pt2[0] + text_w2, text_pt2[1] - text_h2 -7), text_color1, -1)
+                    cv2.putText(img_mask, text_str2, text_pt2, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
+                    cv2.rectangle(zimg_mask, (text_pt1[0], text_pt1[1] + 7), (text_pt1[0] + text_w1, text_pt1[1] - text_h1 - 7), text_color1, -1)
+                    cv2.putText(zimg_mask, text_str1, text_pt1, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
+                    cv2.rectangle(zimg_mask, (text_pt2[0], text_pt2[1] + 7), (text_pt2[0] + text_w2, text_pt2[1] - text_h2 - 7), text_color1, -1)
+                    cv2.putText(zimg_mask, text_str2, text_pt2, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
         else:
-            if max_height < height or max_width < width: # only shrink if img is bigger than required
-                scaling_factor = max_height / float(height) # get scaling factor
-                if max_width/float(width) < scaling_factor:
-                    scaling_factor = max_width / float(width)
-                img = cv2.resize(img, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA) # resize image
-                z = cv2.resize(z.astype(np.uint8), None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA) # resize image
-
+            img_mask = img
             z_img_binary = np.minimum(z,1)
-            zimg = np.multiply(z_img_binary,200)
+            zimg_mask = np.multiply(z_img_binary,200)
 
-            cv2.namedWindow("RGB")
-            cv2.moveWindow("RGB", 0, 0)
-            cv2.imshow("RGB", img) # Show image
-
-            cv2.namedWindow("Depth")
-            cv2.moveWindow("Depth", max_width+100, 0)
-            cv2.imshow("Depth", zimg)
-            cv2.waitKey(0)
-
-        cv2.destroyAllWindows()
+        return img_mask, zimg_mask
     
+
+    def scale_images(self, img_rgb, img_depth, max_width, max_height, interpolation_method = cv2.INTER_LINEAR):
+        height, width = img_depth.shape[:2]
+        if max_height < height or max_width < width: # only shrink if img is bigger than required
+            scaling_factor = max_height / float(height) # get scaling factor
+            if max_width/float(width) < scaling_factor:
+                scaling_factor = max_width / float(width)
+            img_rgb = cv2.resize(img_rgb, None, fx=scaling_factor, fy=scaling_factor, interpolation=interpolation_method) # resize image
+            img_depth = cv2.resize(img_depth.astype(np.uint8), None, fx=scaling_factor, fy=scaling_factor, interpolation=interpolation_method) # resize image
+        return img_rgb, img_depth
+
 
     def visualize_pointcloud(self, rgbimg, xyzimg, boxes, masks, zt, ze, xyzimgname, writedir):
         def display_inlier_outlier(cloud, ind):
@@ -656,7 +658,13 @@ class ProcessImage:
                     # bbextent = np.asarray(bb.get_extent())
                     # bbcenter = np.asarray(bb.get_center())
 
-                    # o3d.visualization.draw_geometries([cl, bb])
+                    o3d.visualization.draw_geometries([cl, bb])
+
+                    
+                    xyzimg_name = os.path.basename(xyzimgname)
+                    basename = os.path.splitext(xyzimg_name)[0]
+                    write_name = basename + ".xyz"
+                    o3d.io.write_point_cloud(os.path.join(writedir,write_name), cl)
 
                     # hull, _ = cl.compute_convex_hull()
 
@@ -715,6 +723,10 @@ class ProcessImage:
                     yolact_mask_store = masksel
                     broc_mask_store = broc_binary
                     xyzstore = xyzimg[bbox[1]:bbox[3],bbox[0]:bbox[2],:]
+
+                    zstore = xyzimg[bbox[1]:bbox[3],bbox[0]:bbox[2],2]
+                    zstore = np.repeat(np.expand_dims(zstore, axis=2), 3, axis=2)
+
                     imgstore = rgbimg[bbox[1]:bbox[3],bbox[0]:bbox[2],:]
                     min_pcd = o3d.geometry.Geometry3D.get_min_bound(cl)
                     max_pcd = o3d.geometry.Geometry3D.get_max_bound(cl)
@@ -726,10 +738,15 @@ class ProcessImage:
             z_img = xyzimg[:,:,2]
             np.clip(z_img, 500, 1000, out=z_img)
             z_img = np.interp(z_img, (z_img.min(), z_img.max()), (0, 200))
-            z3 = cv2.cvtColor(z_img.astype(np.uint8),cv2.COLOR_GRAY2RGB) 
+            z3 = cv2.cvtColor(z_img.astype(np.uint8),cv2.COLOR_GRAY2RGB)
             z_mask = cv2.addWeighted(z3,1,all_masks,0.5,0)
+            zz = xyzimg[bbox[1]:bbox[3],bbox[0]:bbox[2],2]
 
             xyzf = np.multiply(xyzstore, np.repeat(np.expand_dims(broc_mask_store, axis=2), 3, axis=2))
+            zf = np.multiply(zstore, np.repeat(np.expand_dims(broc_mask_store, axis=2), 3, axis=2))
+            zzf = np.multiply(np.expand_dims(zz, axis=2), np.repeat(np.expand_dims(broc_mask_store, axis=2), 3, axis=2))
+            np.clip(zzf, np.min(zzf[zzf!=0]), np.max(zzf[zzf!=0]), out=zzf)
+            zzf = np.interp(zzf, (np.min(zzf[zzf!=0]), np.max(zzf[zzf!=0])), (0, 200))
             imgf = np.multiply(imgstore, np.repeat(yolact_mask_store, 3, axis=2))
 
             if max_height < height or max_width < width: # only shrink if img is bigger than required
@@ -755,6 +772,7 @@ class ProcessImage:
             # diffy = int(np.divide(maxdim - imgf.shape[1], 2))
             # zp[diffx:diffx+imgf.shape[0], diffy:diffy+imgf.shape[1]] = imgf
 
+            # reshaping the images with zero-padding to a fixed shape of 400x400 pixels
             maxdim = 400
             zp = np.zeros((maxdim,maxdim,3)).astype(np.float32)
             diffx = int(np.divide(maxdim - xyzf.shape[0], 2))
@@ -764,35 +782,34 @@ class ProcessImage:
             print(zp.shape)
             print(zp.dtype)
 
-            # maxdim = np.maximum(xyzf.shape[0], xyzf.shape[1])
-            # if xyzf.shape[0] < 224 and xyzf.shape[1] < 224:
-            #     zp = np.zeros((224,224,3))
-            #     diffx = int(np.divide(224 - xyzf.shape[0], 2))
-            #     diffy = int(np.divide(224 - xyzf.shape[1], 2))
-            #     zp[diffx:diffx+xyzf.shape[0], diffy:diffy+xyzf.shape[1]] = xyzf
-            # else:
-            #     maxdim = np.maximum(xyzf.shape[0], xyzf.shape[1])
-            #     zp = np.zeros((maxdim,maxdim,3))
-            #     if xyzf.shape[0] < xyzf.shape[1]:
-            #         diffx = int(np.divide(maxdim - xyzf.shape[0], 2))
-            #         zp[diffx:diffx+xyzf.shape[0], :xyzf.shape[1]] = xyzf
-            #     elif xyzf.shape[1] < xyzf.shape[0]:
-            #         diffy = int(np.divide(maxdim - xyzf.shape[1], 2))
-            #         zp[:xyzf.shape[0], diffy:diffy+xyzf.shape[1]] = xyzf
-            #     else:
-            #         zp[:xyzf.shape[0], :xyzf.shape[1]] = xyzf
+            # maxdim = 400
+            # zp = np.zeros((maxdim,maxdim,3)).astype(np.float32)
+            # diffx = int(np.divide(maxdim - zf.shape[0], 2))
+            # diffy = int(np.divide(maxdim - zf.shape[1], 2))
+            # zp[diffx:diffx+zf.shape[0], diffy:diffy+zf.shape[1]] = zf.astype(np.float32)
 
             # print(zp.shape)
-            # zzp = zp[:,:,2]
-            # zzp = np.interp(zzp, (np.multiply(max_pcd[2],-1), np.multiply(min_pcd[2],-1)), (75, 255))
+            # print(zp.dtype)
+
+            # expanding the images with zero-padding to 120% of its original size
+            # height, width = xyzf.shape[:2]
+            # nh = int(np.multiply(height, 1.2))
+            # nw = int(np.multiply(width, 1.2))
+            # zp = np.zeros((nh,nw,3)).astype(np.float32)
+            # diffx = int(np.divide(nh - xyzf.shape[0], 2))
+            # diffy = int(np.divide(nw - xyzf.shape[1], 2))
+            # zp[diffx:diffx+xyzf.shape[0], diffy:diffy+xyzf.shape[1]] = xyzf.astype(np.float32)
+
+            # print(zp.shape)
+            # print(zp.dtype)
 
             cv2.namedWindow("RGB masks (red) and XYZ masks (green)")
             cv2.moveWindow("RGB masks (red) and XYZ masks (green)", 0, 0)
             cv2.imshow("RGB masks (red) and XYZ masks (green)", img_mask)
-            # cv2.namedWindow("ZP_RGB")
-            # cv2.moveWindow("ZP_RGB", max_width+100, 0)
-            # cv2.imshow("ZP_RGB", zp)
-            k = cv2.waitKey(1)
+            cv2.namedWindow("ZP_RGB")
+            cv2.moveWindow("ZP_RGB", max_width+100, 0)
+            cv2.imshow("ZP_RGB", zp)
+            k = cv2.waitKey(0)
 
 
             xyzimg_name = os.path.basename(xyzimgname)
@@ -807,12 +824,15 @@ class ProcessImage:
             # cv2.imwrite(os.path.join("/home/pieterdeeplearn/harvestcnn/datasets/20200713_size_experiment_realsense/rgb_masks",img_name), zp)
             with open(os.path.join(writedir,np_name), 'wb') as f:
                 np.save(f, zp)
+                # np.save(f, xyzf)
+                # print(xyzf.shape)
 
                 min_x_mask = np.min(zp[:,:,0])
                 max_x_mask = np.max(zp[:,:,0])
                 min_y_mask = np.min(zp[:,:,1])
                 max_y_mask = np.max(zp[:,:,1])
                 min_z_mask = np.min(zp[:,:,2])
+                # min_z_mask = np.min(zf[zf != 0])
                 max_z_mask = np.max(zp[:,:,2])
 
                 if min_x_mask < min_x:
@@ -841,7 +861,7 @@ class ProcessImage:
 
             # imsave(os.path.join("/home/pieterdeeplearn/harvestcnn/datasets/20200713_size_experiment_realsense/xyz_masks",img_name),zp)
             txtfile = open(os.path.join(writedir,txt_name),"w")
-            txtfile.write("{0:.1f}".format(xyz_coordinates[2]))
+            txtfile.write("{0:.1f}".format(diameter))
             # txtfile.write("{0:.1f}, {1:.1f}, {2:.1f}, {3:.1f}".format(xyz_coordinates[0], xyz_coordinates[1], xyz_coordinates[2], diameter))  
             txtfile.close() 
 
@@ -882,347 +902,203 @@ class ProcessImage:
         return broc_mask_binary, stop_program, min_x, max_x, min_y, max_y, min_z, max_z
 
 
-    def store_rle_bitmask(self, rgbimg, xyzimg, boxes, masks):  
+    def xyzimg_for_regression(self, xyzimg, boxes, masks, amodal_masks, zt, ze, diameter, numneighbors=50, stdev=5):
+        def display_inlier_outlier(cloud, ind):
+            inlier_cloud = cloud.select_by_index(ind)
+            outlier_cloud = cloud.select_by_index(ind, invert=True)
+
+            print("Showing outliers (red) and inliers (gray): ")
+            outlier_cloud.paint_uniform_color([1, 0, 0])
+            inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
+            o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
+
+        height, width = xyzimg.shape[:2]
+
         max_height = 700
         max_width = 700
 
-        x = np.expand_dims(xyzimg[:,:,0], axis=2)
-        y = np.expand_dims(xyzimg[:,:,1], axis=2)
-        z = np.expand_dims(xyzimg[:,:,2], axis=2)
-
-        height, width = rgbimg.shape[:2]
-        red = np.expand_dims(rgbimg[:,:,0], axis=2)
-        green = np.expand_dims(rgbimg[:,:,1], axis=2)
-        blue = np.expand_dims(rgbimg[:,:,2], axis=2)
-
-        writedata = {}
-        writedata['info'] = {"description": None, "url": None, "version": None, "year": 2020, "contributor": None, "date_created": "2020-05-12 17:27:18.697772"}
-        writedata['licenses'] = []
-        writedata['licenses'].append({"url": None, "id": 0, "name": None})
-        writedata['images'] = []
-        writedata['type'] = "instances"
-        writedata['annotations'] = []
-        writedata['categories'] = []
-        writedata['categories'].append({"supercategory": "broccoli", "id": 1, "name": "broccoli"})
-        annotation_id = 0
+        stop_program = False
+        save_image = False
 
         if masks.any():
             maskstransposed = masks.transpose(1,2,0)  
+            amodalmaskstransposed = amodal_masks.transpose(1,2,0) 
+            broc_mask_binary = np.zeros((maskstransposed.shape[0],maskstransposed.shape[1],maskstransposed.shape[2]),dtype=np.uint8)
+
+            all_masks = np.zeros((height,width,3),dtype=np.uint8)
+            red_mask = np.zeros((height,width),dtype=np.uint8)
+            green_mask = np.zeros((height,width),dtype=np.uint8)
+
+            for i in range (maskstransposed.shape[-1]):
+                masksel = np.expand_dims(maskstransposed[:,:,i],axis=2).astype(np.uint8) # select the individual masks
+                amodalmasksel = np.expand_dims(amodalmaskstransposed[:,:,i],axis=2).astype(np.float32)
+
+                bbox = boxes[i].astype(np.uint16)
+                masksel = masksel[bbox[1]:bbox[3],bbox[0]:bbox[2]] # crop the mask to the boxing box to reduce memory load
+                amodalmasksel = amodalmasksel[bbox[1]:bbox[3],bbox[0]:bbox[2]]
+
+                xyz_mask = xyzimg[bbox[1]:bbox[3],bbox[0]:bbox[2]]
+                xyz_mask = np.multiply(xyz_mask,masksel)
+                z = xyz_mask[:,:,2] 
+                z3 = np.repeat(np.expand_dims(z, axis=2), 3, axis=2)
+
+                # apply histogram filtering
+                xyz_mask = np.where(np.logical_and(z3 >= zt, z3 <= ze), xyz_mask, 0)
+
+                # invert the mask for better 3D visualization
+                xyz_mask = np.multiply(xyz_mask, -1)
+
+                # initialize the final mask (boolean array)
+                final_mask = np.zeros((masksel.shape[0], masksel.shape[1]), dtype=np.bool)
+                xyzf = np.zeros((masksel.shape[0], masksel.shape[1], 4), dtype=np.float32)                 
+
+                # make the point cloud
+                pcd = o3d.geometry.PointCloud()
+                pcd.points = o3d.utility.Vector3dVector(xyz_mask.reshape(-1, 3))
+
+                # do the outlier removal
+                cl, ind = pcd.remove_statistical_outlier(nb_neighbors=numneighbors, std_ratio=stdev)
+                
+                try:
+                    flat = final_mask.flatten()
+                    flat[ind] = True
+                    final_mask = flat.reshape(final_mask.shape, order='C')
+
+                    xyzi = xyzimg[bbox[1]:bbox[3],bbox[0]:bbox[2],:]
+                    mask = np.repeat(np.expand_dims(final_mask, axis=2), 3, axis=2)
+
+                    xyzf[:,:,:3] = np.multiply(xyzi, mask)
+                    xyzf[:,:,3] = amodalmasksel.reshape((masksel.shape[0], masksel.shape[1]))
+
+                    xyzf_copy = xyzf[:,:,:3].copy()
+                    xyzf_copy[xyzf_copy == 0] = np.nan
+                    xyzf_copy = np.multiply(xyzf_copy, -1)
+                    pcd = o3d.geometry.PointCloud()
+                    pcd.points = o3d.utility.Vector3dVector(xyzf_copy.reshape(-1, 3))
+                    pcd = pcd.remove_non_finite_points(remove_nan=True, remove_infinite=False)
+                    o3d.visualization.draw_geometries([pcd])
+
+                    cv2.namedWindow("XYZ final")
+                    cv2.moveWindow("XYZ final", 0, 0)
+                    cv2.imshow("XYZ final", xyzf[:,:,:3].astype(np.uint8))
+
+                    cv2.namedWindow("Amodal mask")
+                    cv2.moveWindow("Amodal mask", masksel.shape[0] + 300, 0)
+                    cv2.imshow("Amodal mask", np.multiply(xyzf[:,:,3], 255).astype(np.uint8))
+                    k = cv2.waitKey(0)
+
+                    if k == ord('r'):
+                        save_image = False
+                        cv2.destroyAllWindows()
+                    elif k == 27: 
+                        save_image = True
+                        cv2.destroyAllWindows()
+                    elif k == ord('q'):
+                        stop_program = True
+                        cv2.destroyAllWindows()
+                    
+                except:
+                    print("error!")
+
+        else:
+            xyzf = np.array([])
+
+        return xyzf, save_image, stop_program, numneighbors, stdev
+
+
+    def zeropadding(self, xyzf, dimension=400):
+        zp = np.zeros((dimension,dimension,xyzf.shape[-1])).astype(np.float32)
+        diffx = int(np.divide(dimension - xyzf.shape[0], 2))
+        diffy = int(np.divide(dimension - xyzf.shape[1], 2))
+        zp[diffx:diffx+xyzf.shape[0], diffy:diffy+xyzf.shape[1]] = xyzf.astype(np.float32)
+        
+        return zp
+
+
+    def pointnet(self, xyzimg, boxes, masks, zt, ze, diameter, numneighbors=50, stdev=5):
+        def display_inlier_outlier(cloud, ind):
+            inlier_cloud = cloud.select_by_index(ind)
+            outlier_cloud = cloud.select_by_index(ind, invert=True)
+
+            print("Showing outliers (red) and inliers (gray): ")
+            outlier_cloud.paint_uniform_color([1, 0, 0])
+            inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
+            o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
+
+        height, width = xyzimg.shape[:2]
+
+        max_height = 700
+        max_width = 700
+
+        stop_program = False
+        save_image = False
+
+        if masks.any():
+            maskstransposed = masks.transpose(1,2,0)  
+            broc_mask_binary = np.zeros((maskstransposed.shape[0],maskstransposed.shape[1],maskstransposed.shape[2]),dtype=np.uint8)
+
+            all_masks = np.zeros((height,width,3),dtype=np.uint8)
+            red_mask = np.zeros((height,width),dtype=np.uint8)
+            green_mask = np.zeros((height,width),dtype=np.uint8)
 
             for i in range (maskstransposed.shape[-1]):
                 masksel = np.expand_dims(maskstransposed[:,:,i],axis=2).astype(np.uint8) # select the individual masks
 
                 bbox = boxes[i].astype(np.uint16)
-
-                x_mask = np.multiply(x,masksel)
-                y_mask = np.multiply(y,masksel)
-                z_mask = np.multiply(z,masksel)
-
-                z_top = 630
-                z_edge = 660
-
-                x_mask_final = np.where(np.logical_and(z_mask>=z_top, z_mask<=z_edge),x_mask,0)
-                y_mask_final = np.where(np.logical_and(z_mask>=z_top, z_mask<=z_edge),y_mask,0)
-                z_mask_final = np.where(np.logical_and(z_mask>=z_top, z_mask<=z_edge),z_mask,0) # this code keeps the matrix dimensions intact for visualization
+                masksel = masksel[bbox[1]:bbox[3],bbox[0]:bbox[2]] # crop the mask to the boxing box to reduce memory load
                 
-                z_mask_final_binary = np.minimum(z_mask_final,1).astype(np.uint8) 
+                xyz_mask = xyzimg[bbox[1]:bbox[3],bbox[0]:bbox[2]]
+                xyz_mask = np.multiply(xyz_mask,masksel)
+                z = xyz_mask[:,:,2] 
+                z3 = np.repeat(np.expand_dims(z, axis=2), 3, axis=2)
 
-                mask_vis = np.multiply(z_mask_final_binary,255)
-                if max_height < height or max_width < width: # only shrink if img is bigger than required
-                    scaling_factor = max_height / float(height) # get scaling factor
-                    if max_width/float(width) < scaling_factor:
-                        scaling_factor = max_width / float(width)
-                    mask_vis = cv2.resize(mask_vis, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA) # resize image
+                # apply histogram filtering
+                xyz_mask = np.where(np.logical_and(z3 >= zt, z3 <= ze), xyz_mask, 0)
 
-                cv2.namedWindow("mask")
-                cv2.moveWindow("mask", 0, 0)
-                cv2.imshow("mask", mask_vis) # Show image
-                cv2.waitKey(0)
+                # invert the mask for better 3D visualization
+                xyz_mask = np.multiply(xyz_mask, -1)
 
-                bitmask = pycocotools.mask.encode(np.asarray(z_mask_final_binary, order="F"))
-                bitmask[0]['counts'] = bitmask[0]['counts'].decode("ascii")
+                # initialize the final mask (boolean array)
+                final_mask = np.zeros((masksel.shape[0], masksel.shape[1]), dtype=np.bool)                
 
-                bbxs,bbys,bbxxs,bbyys = bbox
-                bbws = bbxxs - bbxs
-                bbhs = bbyys - bbys
-                bb_area = int(bbws*bbhs)
-                bbpoints = np.asarray((bbxs,bbys,bbws,bbhs)).flatten().tolist()
+                # make the point cloud
+                pcd = o3d.geometry.PointCloud()
+                pcd.points = o3d.utility.Vector3dVector(xyz_mask.reshape(-1, 3))
 
-                writedata['annotations'].append({
-                    'id': i,
-                    'image_id': 0,
-                    'category_id': 1,
-                    'segmentation': bitmask[0],
-                    'area': bb_area,
-                    'bbox': bbpoints,
-                    'iscrowd': 0
-                })
-
-        with open("/home/pieterdeeplearn/harvestcnn/datasets/train/annotations_bitmask.json", 'w') as outfile:
-            json.dump(writedata, outfile)
-
-        return 
-
-
-    def prepare_donut(self):
-        filenames = []
-
-        modaldir = "/home/pieterdeeplearn/harvestcnn/datasets/donut"
-
-        writedir = "/home/pieterdeeplearn/harvestcnn/datasets/donut/bitmasks"
-
-        subfolders = ["train","val"]
-
-        max_height = 750
-        max_width = 750
-
-        breakout = False
-
-        imgcount = 0
-
-        for i in range(len(subfolders)):
-            filelist = os.listdir(os.path.join(modaldir,subfolders[i]))
-            
-            writedata = {}
-            writedata['info'] = {"description": None, "url": None, "version": None, "year": 2020, "contributor": None, "date_created": "2020-05-12 17:27:18.697772"}
-            writedata['licenses'] = []
-            writedata['licenses'].append({"url": None, "id": 0, "name": None})
-            writedata['images'] = []
-            writedata['type'] = "instances"
-            writedata['annotations'] = []
-            writedata['categories'] = []
-            writedata['categories'].append({"supercategory": "donut", "id": 1, "name": "donut"})
-            annotation_id = 0
-
-            for j in range (len(filelist)):
-                fname = filelist[j]
-                if fname.endswith(".jpg"):
-                    imgname = fname
-                    print(imgcount)
-                    print(imgname)
-                    
-                    img = cv2.imread(os.path.join(modaldir,subfolders[i],imgname))
-                    height, width = img.shape[:2]
-                    
-                    json_name = imgname.split(".jpg")
-                    jn = json_name[0]+'.json'
-                    
-                    cv2.imwrite(os.path.join(writedir,subfolders[i],"JPEGImages",imgname),img)
-                    
-                    bbox = []
-                    circle = []
-                    
-                    writedata['images'].append({
-                                    'license': 0,
-                                    'url': None,
-                                    'file_name': str("JPEGImages/" + imgname),
-                                    'height': height,
-                                    'width': width,
-                                    'date_captured': None,
-                                    'id': imgcount
-                                })                       
-
-                    num_instances = len(bbox)
-                    visible_instances = []
-
-                    for w in range(num_instances):
-                        visible_instances.append([])
-                    
-                    # create visible mask regions   
-                    with open(os.path.join(modaldir,subfolders[i],jn), 'r') as json_file:
-                        data = json.load(json_file)
-                        for p in data['shapes']:
-                            if p['label'] == 'donut': 
-                                donut_img = np.zeros((height,width,1),dtype=(np.uint8)) 
-                                points = p['points']
-                                x = [points[idx][0] for idx in range(len(points))]
-                                y = [points[idx][1] for idx in range(len(points))]
-                                xy = list(zip(x, y))
-                                donutpoly = np.array(points).reshape(-1,1,2)
-                                donut_img = cv2.fillPoly(donut_img,[donutpoly.astype(np.int32)],(255))
-
-                                for q in data['shapes']:
-                                    if q['label'] == 'hole':
-                                        hole_img = np.zeros((height,width,1),dtype=(np.uint8))
-                                        points = q['points']
-                                        x = [points[idx][0] for idx in range(len(points))]
-                                        y = [points[idx][1] for idx in range(len(points))]
-                                        xy = list(zip(x, y))
-                                        holepoly = np.array(points).reshape(-1,1,2)  
-                                        hole_img = cv2.fillPoly(hole_img,[holepoly.astype(np.int32)],(255))
-
-                                        intersection = cv2.bitwise_and(donut_img,hole_img)
-                                        ret,thresh1 = cv2.threshold(intersection,127,255,cv2.THRESH_BINARY)
-
-                                        output = cv2.connectedComponentsWithStats(thresh1)
-                                        num_labels = output[0] # The first cell is the number of labels
-                                        labels = output[1] # The second cell is the label matrix
-                                        stats = output[2] # The third cell is the stat matrix
-                                        centroids = output[3] # The fourth cell is the centroid matrix
-
-                                        region_areas = []
-
-                                        for label in range(1,num_labels):
-                                            region_areas.append(stats[label, cv2.CC_STAT_AREA])
-
-                                        if region_areas:
-                                            donut_img_binary = np.minimum(donut_img,1).astype(np.uint8)
-                                            hole_img_inv = cv2.bitwise_not(hole_img)
-                                            cut_region = np.minimum(hole_img_inv,1).astype(np.uint8)
-
-                                            final_mask = np.multiply(donut_img_binary, np.expand_dims(cut_region,axis=2))
-                                            final_mask_vis = np.multiply(final_mask,255).astype(np.uint8)
-
-                                            # final_mask = donut_img_binary
-                                            # final_mask_vis = np.multiply(final_mask,255).astype(np.uint8)
-
-                                            ret,thresh2 = cv2.threshold(final_mask_vis,127,255,cv2.THRESH_BINARY)
-                                            contours, hier = cv2.findContours(thresh2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                                            cnt = np.concatenate(contours)
-                                            bbx, bby, bbw, bbh = cv2.boundingRect(cnt)
-                                            bb_area = int(bbw*bbh)
-                                            bbpoints = np.asarray((bbx,bby,bbw,bbh)).flatten().tolist()
-
-                                            bitmask = pycocotools.mask.encode(np.asarray(final_mask, order="F"))
-                                            bitmask[0]['counts'] = bitmask[0]['counts'].decode("ascii")
-
-                                            writedata['annotations'].append({
-                                                'id': annotation_id,
-                                                'image_id': imgcount,
-                                                'category_id': 1,
-                                                'segmentation': bitmask[0],
-                                                'area': bb_area,
-                                                'bbox': bbpoints,
-                                                'iscrowd': 0
-                                            })
-                                    
-                                            annotation_id = annotation_id+1
-
-                                            # cv2.rectangle(final_mask_vis , (bbx, bby), (bbx+bbw, bby+bbh), (255), 1)
-
-                                            # if max_height < height or max_width < width: # only shrink if img is bigger than required
-                                            #     scaling_factor = max_height / float(height) # get scaling factor
-                                            #     if max_width/float(width) < scaling_factor:
-                                            #         scaling_factor = max_width / float(width)
-                                            #     final_mask_vis = cv2.resize(final_mask_vis, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA) # resize image
-                                        
-                                            # cv2.namedWindow('final_mask')
-                                            # cv2.moveWindow('final_mask', 0, 0)   
-                                            # cv2.imshow('final_mask', final_mask_vis)
-                                            # cv2.waitKey(0)
-                imgcount = imgcount+1
-
-            with open(os.path.join(writedir,subfolders[i],"annotations.json"), 'w') as outfile:
-                json.dump(writedata, outfile)
-
-
-    def xyz_masks_to_json(self, modaldir, writedir):
-        filenames = []
-
-        max_height = 750
-        max_width = 750
-
-        imgcount = 0
-
-        filelist = os.listdir(modaldir)
-        
-        writedata = {}
-        writedata['info'] = {"description": None, "url": None, "version": None, "year": 2020, "contributor": None, "date_created": "2020-05-12 17:27:18.697772"}
-        writedata['licenses'] = []
-        writedata['licenses'].append({"url": None, "id": 0, "name": None})
-        writedata['images'] = []
-        writedata['type'] = "instances"
-        writedata['annotations'] = []
-        writedata['categories'] = []
-        writedata['categories'].append({"supercategory": "broccoli", "id": 1, "name": "broccoli"})
-        annotation_id = 0
-
-        for j in range (len(filelist)):
-            fname = filelist[j]
-            if fname.endswith(".tif"):
-                imgname = fname
-                print(imgcount)
-                print(imgname)
-
-                img = cv2.imread(os.path.join(modaldir,imgname),-1)
-
-                # be aware opencv2 reads an image in reversed order (so RGB->BGR and XYZ->ZYX)
-                img = img[...,::-1]
-                height, width = img.shape[:2]
+                # do the outlier removal
+                cl, ind = pcd.remove_statistical_outlier(nb_neighbors=numneighbors, std_ratio=stdev)
                 
-                maskname = imgname.split(".tif")
-                maskfile = maskname[0]+'.npy'
-                
-                bbox = []
-                circle = []
-                
-                writedata['images'].append({
-                                'license': 0,
-                                'url': None,
-                                'file_name': str("JPEGImages/" + imgname),
-                                'height': height,
-                                'width': width,
-                                'date_captured': None,
-                                'id': imgcount
-                            })                       
+                try:
+                    bb = cl.get_axis_aligned_bounding_box()
+                    o3d.visualization.draw_geometries([cl, bb])
 
-                num_instances = len(bbox)
-                visible_instances = []
+                    empty = np.zeros((max_height, max_width, 1)).astype(np.uint8)
+                    cv2.imshow("XYZ final", empty)
+                    k = cv2.waitKey(0)
 
-                for w in range(num_instances):
-                    visible_instances.append([])
-                
-                # create visible mask regions   
-                
-                masks = np.load(os.path.join(modaldir,maskfile))
-                for i in range(masks.shape[-1]):
-                    curmask = masks[:,:,i]
+                    xyzf[xyzf == 0] = np.nan
+                    pcd = o3d.geometry.PointCloud()
+                    pcd.points = o3d.utility.Vector3dVector(xyzf.reshape(-1, 3))
+                    pcd = pcd.remove_non_finite_points(remove_nan=True, remove_infinite=False)
+                    o3d.visualization.draw_geometries([pcd])
 
-                    if np.max(curmask == 1):
-                        curmask_uint8 = np.multiply(curmask,255).astype(np.uint8)
-
-                        ret,thresh2 = cv2.threshold(curmask_uint8,254,255,cv2.THRESH_BINARY)
-                        contours, hier = cv2.findContours(thresh2, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                        cnt = np.concatenate(contours)
-                        bbx, bby, bbw, bbh = cv2.boundingRect(cnt)
-                        bb_area = int(bbw*bbh)
-                        bbpoints = np.asarray((bbx,bby,bbw,bbh)).flatten().tolist()
-
-                        bitmask = pycocotools.mask.encode(np.asarray(curmask, order="F"))
-                        bitmask['counts'] = bitmask['counts'].decode("ascii")
-                        # bitmask[0]['counts'] = bitmask[0]['counts'].decode("ascii")
-
-                        writedata['annotations'].append({
-                            'id': annotation_id,
-                            'image_id': imgcount,
-                            'category_id': 1,
-                            # 'segmentation': bitmask[0],
-                            'segmentation': bitmask,
-                            'visible_mask': bitmask, # only enable this line of code when training ORCNN on RGBXYZ data
-                            'area': bb_area,
-                            'bbox': bbpoints,
-                            'iscrowd': 0
-                        })
-                
-                        annotation_id = annotation_id+1
-
-                        cv2.rectangle(curmask_uint8 , (bbx, bby), (bbx+bbw, bby+bbh), (255), 1)
-
-                        if max_height < height or max_width < width: # only shrink if img is bigger than required
-                            scaling_factor = max_height / float(height) # get scaling factor
-                            if max_width/float(width) < scaling_factor:
-                                scaling_factor = max_width / float(width)
-                            curmask_uint8 = cv2.resize(curmask_uint8, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv2.INTER_AREA) # resize image
+                    if k == ord('r'):
+                        save_image = False
+                        cv2.destroyAllWindows()
+                    elif k == 27: 
+                        save_image = True
+                        cv2.destroyAllWindows()
+                    elif k == ord('q'):
+                        stop_program = True
+                        cv2.destroyAllWindows()
                     
-                        cv2.namedWindow('final_mask')
-                        cv2.moveWindow('final_mask', 0, 0)   
-                        cv2.imshow('final_mask', curmask_uint8)
-                        cv2.waitKey(1)
+                except:
+                    print("error!")
 
-                imgcount = imgcount+1
+        else:
+            cl = np.array([])
 
-        with open(os.path.join(writedir,"annotations.json"), 'w') as outfile:
-            json.dump(writedata, outfile)
+        return cl, save_image, stop_program, numneighbors, stdev
 
 
     # Python implementation of rs2_deproject_pixel_to_point
@@ -1263,10 +1139,11 @@ if __name__ == "__main__":
         model = build_model(cfg)
         process = ProcessImage(model, cfg)
 
-        imgdir = "/home/pieterdeeplearn/harvestcnn/datasets/20200713_size_experiment_realsense/annotation_files/polygon_annotations_rgb"
-        writedir = "/home/pieterdeeplearn/harvestcnn/datasets/20200713_size_experiment_realsense/xyz_masks"
+        imgdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/last_trigger"
+        writedir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks"
+        writedir1 = "/home/pieterdeeplearn/harvestcnn/results/postprocessing"
 
-        gtfile = "/home/pieterdeeplearn/harvestcnn/datasets/20200713_size_experiment_realsense/size_measurement_broccoli.ods"
+        gtfile = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/size_measurement_broccoli.ods"
         gt = get_data(gtfile)
 
         with open(os.path.join(imgdir, 'depth_intrin.json')) as json_file:
@@ -1287,8 +1164,16 @@ if __name__ == "__main__":
         max_x = 0
         min_y = 0
         max_y = 0
-        min_z = 0
+        min_z = 9999
         max_z = 0
+
+        overview_d = []
+
+        with open(os.path.join(writedir1, 'broccoli_diameter_postprocessing.csv'), 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            csvwriter.writerow(['plant_id', 'real-world diameter (mm)', 'diameter vision (mm)', 'difference in diameter (mm)'])
+        
+        diff = []
 
         for i in range(len(xyzimages)):
             xyzimage = xyzimages[i]
@@ -1297,6 +1182,9 @@ if __name__ == "__main__":
             rgbimgname = xyzimage.replace("xyz", "rgb")
             rgbimgname = rgbimgname.replace(".npy", ".png")
             print(rgbimgname)
+
+            basename, fileext = os.path.splitext(rgbimgname)
+            plant_id = int(basename.split("_")[2].split("plant")[1])
 
             original_image = process.load_rgb_image(os.path.join(imgdir,rgbimgname))
 
@@ -1327,8 +1215,8 @@ if __name__ == "__main__":
                 amodal_masks = instances.pred_masks.numpy()
                 modal_masks = instances.pred_visible_masks.numpy()
 
-                # process.visualize(original_image, amodal_masks, modal_masks)
-                z, zt, ze, masks, centers_x, centers_y, diameters = process.postprocess(xyz_image, modal_masks, max_depth_range_broc=100, max_depth_contribution=0.005)
+                # process.visualize(original_image, bbox, amodal_masks, modal_masks)
+                z, zt, ze, masks, centers_x, centers_y, diameters = process.postprocess(xyz_image, modal_masks, amodal_masks, max_depth_range_broc=150, max_depth_contribution=0.0001)
 
                 diametersmm = np.zeros(np.count_nonzero(zt))
                 if np.count_nonzero(zt)>0:
@@ -1346,22 +1234,147 @@ if __name__ == "__main__":
                     if int(diameter_data[0]) == plant_id:
                         real_diameter = diameter_data[1]
 
+                        try:
+                            broccoli_height = diameter_data[2]
+                        except:
+                            broccoli_height = 0
+
+
                 idx = (np.abs(diametersmm - real_diameter)).argmin()
                 diameter = diametersmm[idx]
                 xyz_coordinates = xyz_image[centers_y[idx],centers_x[idx]]
                 cx = centers_x[idx]
                 cy = centers_y[idx]
+                ztop = zt[idx]
+                zedge = ze[idx]
+                height = zedge-ztop
 
-                # process.visualize_masks(original_image, z, bbox, modal_masks, zt, ze, centers_x, centers_y, diameters, diametersmm, str(real_diameter))
+                ## visualization of the regression results:
+                # real_diameter = 0
+                # plant_id = int(rgbimgname.split("_")[2].split("plant")[1])
+                # with open(os.path.join(writedir1, 'broccoli_diameter_regression1.csv'), 'r', newline='') as csvfile:
+                #     spamreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+                #     for row in spamreader:
+                #         if int(row[0]) == plant_id:
+                #             real_diameter = float(row[1])
+                #             diameter = float(row[2])
+                            
+                # idx = (np.abs(diametersmm - diameter)).argmin()
+                # diametersmm[idx] = diameter
+                # broccoli_height = 0
+
+
+                # with open(os.path.join(writedir1, 'broccoli_diameter_postprocessing.csv'), 'a', newline='') as csvfile:
+                #     csvwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
+                #     csvwriter.writerow([plant_id, round(real_diameter, 1), round(diameter, 1), round(real_diameter-diameter, 1)])
+
+                # img_mask, zimg_mask = process.visualize_masks(original_image, z, bbox, modal_masks, amodal_masks, zt-10, ze+10, centers_x, centers_y, diameters, diametersmm, idx, str(real_diameter), str(broccoli_height))
+                # cv2.imwrite(os.path.join(writedir1, rgbimgname), img_mask)
+                # cv2.imwrite(os.path.join(writedir1, xyzimgname), zimg_mask)
+                
+                # img_mask, zimg_mask = process.scale_images(img_mask, zimg_mask, 700, 700)
+
+                # cv2.namedWindow("RGB")
+                # cv2.moveWindow("RGB", 0, 0)
+                # cv2.imshow("RGB", img_mask) # Show image
+
+                # cv2.namedWindow("Depth")
+                # cv2.moveWindow("Depth", 800, 0)
+                # cv2.imshow("Depth", zimg_mask)
+                # cv2.waitKey(1)
+                
                 # final_masks, stop_program = process.visualize_pointcloud(original_image, xyz_image, bbox, modal_masks, zt, ze, os.path.join(imgdir,xyzimgname), writedir)
-                final_masks, stop_program, min_x, max_x, min_y, max_y, min_z, max_z = process.pointcloud_for_regression(original_image, xyz_image, bbox, modal_masks, xyz_coordinates, diameter, cx, cy, os.path.join(imgdir,xyzimgname), writedir, min_x, max_x, min_y, max_y, min_z, max_z)
 
-                print("min_x: " + str(min_x))
-                print("max_x: " + str(max_x))
-                print("min_y: " + str(min_y))
-                print("max_y: " + str(max_y))
-                print("min_z: " + str(min_z))
-                print("max_z: " + str(max_z))
+                # final_masks, stop_program, min_x, max_x, min_y, max_y, min_z, max_z = process.pointcloud_for_regression(original_image, xyz_image, bbox, modal_masks, xyz_coordinates, real_diameter, cx, cy, os.path.join(imgdir,xyzimgname), writedir, min_x, max_x, min_y, max_y, min_z, max_z)
+
+                # print("min_x: " + str(min_x))
+                # print("max_x: " + str(max_x))
+                # print("min_y: " + str(min_y))
+                # print("max_y: " + str(max_y))
+                # print("min_z: " + str(min_z))
+                # print("max_z: " + str(max_z))
+
+
+                bb = np.expand_dims(bbox[idx], axis=0)
+                mm = np.expand_dims(modal_masks[idx,:,:], axis=0)
+                am = np.expand_dims(amodal_masks[idx,:,:], axis=0)
+
+                nn = 50
+                sd = 5
+                # pcd, save_image, stop_program, nn, sd = process.pointnet(xyz_image, bb, mm, ztop, zedge, real_diameter, nn, sd)
+                xyzf, save_image, stop_program, nn, sd = process.xyzimg_for_regression(xyz_image, bb, mm, am, ztop, zedge, real_diameter, nn, sd) 
+
+                while not save_image:
+                    sd = sd-1
+                    if sd <= 2:
+                        sd = sd - 0.25
+                    xyzf, save_image, stop_program, nn, sd = process.xyzimg_for_regression(xyz_image, bb, mm, am, ztop, zedge, real_diameter, nn, sd)
+                    # pcd, save_image, stop_program, nn, sd = process.pointnet(xyz_image, bb, mm, ztop, zedge, real_diameter, nn, sd)
+                    if save_image:
+                        break
+
+
+                if save_image:
+                    xyzimg_name = os.path.basename(xyzimgname)
+                    basename = os.path.splitext(xyzimg_name)[0]
+                    # write_name = basename + ".xyz"
+                    write_name = basename + ".npy"
+
+                    zp = process.zeropadding(xyzf, 400)
+                    print(zp.shape)
+                    print(zp.dtype)
+
+                    # o3d.io.write_point_cloud(os.path.join(writedir,write_name), pcd)
+
+                    with open(os.path.join(writedir, write_name), 'wb') as f:
+                        np.save(f, zp)
+
+                    txt_name = basename + ".txt"
+                    txtfile = open(os.path.join(writedir,txt_name),"w")
+                    txtfile.write("{0:.1f}".format(real_diameter))
+                    # txtfile.write("{0:.1f}, {1:.1f}, {2:.1f}, {3:.1f}".format(xyz_coordinates[0], xyz_coordinates[1], xyz_coordinates[2], diameter))  
+                    txtfile.close() 
+                    
+                    # extract the extreme x, y and z values for normalization
+                    min_x_mask = np.min(zp[:,:,0])
+                    max_x_mask = np.max(zp[:,:,0])
+                    min_y_mask = np.min(zp[:,:,1])
+                    max_y_mask = np.max(zp[:,:,1])
+                    min_z_mask = np.min(zp[:,:,2])
+                    max_z_mask = np.max(zp[:,:,2])
+
+                    if min_x_mask < min_x:
+                        min_x = min_x_mask
+                        print("min_x set to: " + str(min_x))
+
+                    if min_y_mask < min_y:
+                        min_y = min_y_mask
+                        print("min_y set to: " + str(min_y))
+
+                    if min_z_mask < min_z:
+                        min_z = min_z_mask
+                        print("min_z set to: " + str(min_z))
+
+                    if max_x_mask > max_x:
+                        max_x = max_x_mask
+                        print("max_x set to: " + str(max_x))
+
+                    if max_y_mask > max_y:
+                        max_y = max_y_mask
+                        print("max_y set to: " + str(max_y))
+
+                    if max_z_mask > max_z:
+                        max_z = max_z_mask
+                        print("max_z set to: " + str(max_z))
+
 
                 if stop_program:
-                    break
+                    break              
+
+
+print("min_x: " + str(min_x))
+print("max_x: " + str(max_x))
+print("min_y: " + str(min_y))
+print("max_y: " + str(max_y))
+print("min_z: " + str(min_z))
+print("max_z: " + str(max_z))

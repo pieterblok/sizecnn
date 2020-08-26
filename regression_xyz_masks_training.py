@@ -117,7 +117,8 @@ class regression_dataset(Dataset):
         
         with open(self.data_dict['image_path'][idx], 'rb') as f:
             image = np.load(f)
-        
+
+
         if self.image_shape is not None:
             # alternative for transforms.Resize
             image = skimage.transform.resize(image, self.image_shape, preserve_range=True)
@@ -131,21 +132,20 @@ class regression_dataset(Dataset):
             image = image[startx:startx+224, starty:starty+224, :]
 
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
-            
             # from all masks these are the extremes:
-            # min_x = float(-173.15782)
-            # max_x = float(266.65762)
-            # min_y = float(-266.70273)
-            # max_y = float(210.61345)
-            # min_z = float(0)
-            # max_z = float(751.0)
+            # min_x: -173.15782
+            # max_x: 266.65762
+            # min_y: -231.14442
+            # max_y: 210.61345
+            # min_z: 0.0
+            # max_z: 751.0
 
             min_x = float(-267)
             max_x = float(267)
-            min_y = float(-267)
-            max_y = float(267)
+            min_y = float(-232)
+            max_y = float(232)
             min_z = float(0)
-            max_z = float(751)
+            max_z = float(755)
             
             image[:,:,0] = (image[:,:,0] - min_x) / (max_x - min_x)
             image[:,:,1] = (image[:,:,1] - min_y) / (max_y - min_y)
@@ -157,49 +157,68 @@ class regression_dataset(Dataset):
             # transforms.Normalize
             image = self.transform(image)
 
-            
         target = self.data_dict['label'][idx]
         
         return image, target            
 
 
 # data root directory
-data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20200713_size_experiment_realsense/xyz_masks'
+data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks'
 
-preprocess = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+preprocess = transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5))
 
-train_dataset =  regression_dataset(data_root, train=True, image_shape=256, transform=preprocess)
-test_dataset =  regression_dataset(data_root, train=False, image_shape=256, transform=preprocess)
+# reshape the images directly to 224x224 pixels
+train_dataset =  regression_dataset(data_root, train=True, image_shape=224, transform=preprocess)
+val_dataset =  regression_dataset(data_root, train=False, image_shape=224, transform=preprocess)
 
 print('Length of the train dataset: {}'.format(len(train_dataset)))
-print('Length of the test dataset: {}'.format(len(test_dataset)))
+print('Length of the val dataset: {}'.format(len(val_dataset)))
 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=9, shuffle=True, num_workers=2)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=9, shuffle=True, num_workers=2)
+val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=9, shuffle=True, num_workers=2)
+
+# visualize the data distribution for 10 random batches (the data should in between -1 and 1)
+# for i in range(10):
+#     data = next(iter(train_loader))
+#     print(data[0].mean())
+#     print(data[0].std())
+#     plt.hist(data[0].flatten())
+#     plt.axvline(data[0].mean())
+#     plt.show()
 
 # use cuda:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = models.resnet50(pretrained=True)
-    
+model = models.resnext101_32x8d(pretrained=True)
+
 model.fc = nn.Sequential(nn.Linear(2048, 512),
-                                 nn.ReLU(),
-                                 nn.Dropout(0.2),
-                                 nn.Linear(512, 1))
+                        nn.ReLU(),
+                        nn.Dropout(0.2),
+                        nn.Linear(512, 1))
+
+# make a 4-channel Resnet
+# thanks to: https://stackoverflow.com/questions/62629114/how-to-modify-resnet-50-with-4-channels-as-input-using-pre-trained-weights-in-py
+pretrained_weights = model.conv1.weight.clone()
+model.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False)
+
+# duplicate the pretrained weights so that it has 4-channels
+weights = torch.zeros([64, 4, 7, 7], dtype=torch.float32)
+weights[:,:3,:,:] = pretrained_weights
+weights[:,3,:,:] = pretrained_weights[:,1,:,:]
+model.conv1.weight = torch.nn.Parameter(weights)
 
 print(model)
 
-# error on train-set: 3.7 mm (avg), 10.2 mm (max)
-# error on test-set: 4.4 mm (avg), 16.4 mm (max)
+# loss function and optimizer
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.01)
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=4e-3, amsgrad=True)
 
 model.to(device)
 
 # training loop extracted from: https://github.com/spmallick/learnopencv/blob/master/Image-Classification-in-PyTorch/image_classification_using_transfer_learning_in_pytorch.ipynb
-epochs = 50
+epochs = 200
 start = time.time()
 history = []
-save_path = './weights/D_regression_xyz_masks'
+save_path = './weights/D_regression_xyz_masks_4channel'
 
 for epoch in range(epochs):
     epoch_start = time.time()
@@ -248,7 +267,7 @@ for epoch in range(epochs):
         model.eval()
 
         # Validation loop
-        for j, (inputs, labels) in enumerate(test_loader):
+        for j, (inputs, labels) in enumerate(val_loader):
             inputs = inputs.to(device)
             labels = labels.to(device)
 
@@ -270,7 +289,7 @@ for epoch in range(epochs):
     avg_train_loss = train_loss/len(train_dataset) 
 
     # Find average training loss 
-    avg_valid_loss = valid_loss/len(test_dataset)
+    avg_valid_loss = valid_loss/len(val_dataset)
 
     history.append([avg_train_loss, avg_valid_loss])
             
