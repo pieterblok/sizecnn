@@ -210,7 +210,7 @@ print(model)
 
 # loss function and optimizer
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=4e-3, amsgrad=True)
+optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=4e-3, amsgrad=True)
 
 model.to(device)
 
@@ -299,3 +299,15 @@ for epoch in range(epochs):
     
     # Save the model for every epoch:
     torch.save(model, save_path+'/epoch_'+str(epoch+1).zfill(3)+'.pt')
+
+epoch = np.arange(epochs)
+train_loss_history = [loss[0] for loss in history]
+val_loss_history = [loss[1] for loss in history]
+plt.plot(epoch, train_loss_history, "-b", label="train loss")
+plt.plot(epoch, val_loss_history, "-r", label="val loss")
+plt.legend(loc="upper right")
+plt.title("Training and validation loss curve")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.ylim(0, 200)
+plt.show()
