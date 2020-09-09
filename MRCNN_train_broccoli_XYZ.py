@@ -1,4 +1,5 @@
 import detectron2
+import torch
 from detectron2.utils.logger import setup_logger
 setup_logger()
 
@@ -22,7 +23,7 @@ def imshow(img):
     plt.imshow(img[:, :, [2, 1, 0]])
     plt.axis("off")
     plt.show()
-    
+   
 if __name__ == "__main__":
     # run on gpu 0 (NVIDIA Geforce GTX 1080Ti) and gpu 1 (NVIDIA Geforce GTX 1070Ti)
     os.environ["CUDA_VISIBLE_DEVICES"]="0,1"

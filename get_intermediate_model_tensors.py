@@ -23,6 +23,9 @@ from detectron2.structures import ImageList
 from detectron2.modeling.backbone import build_backbone
 from detectron2.checkpoint import DetectionCheckpointer
 
+import open3d as o3d
+import skimage.transform as transform
+
 
 class ProcessImage:
     def __init__(self, model, cfg):
@@ -173,18 +176,46 @@ if __name__ == "__main__":
         cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5   # set the testing threshold for this model
 
         # read rgb and xyz image
-        imgdir = '/media/pieterdeeplearn/easystore/BroccoliData/20190625'
-        rgbimgname = '20190625_081422015_RGB_4.tif'
-        xyzimgname = '20190625_081422015_Depth_4.tif'
+        # imgdir = '/media/pieterdeeplearn/easystore/BroccoliData/20190625'
+        # rgbimgname = '20190625_081422015_RGB_4.tif'
+        # xyzimgname = '20190625_081422015_Depth_4.tif'
+
+        imgdir = '/home/pieterdeeplearn/harvestcnn/datasets'
+        rgbimgname = 'RealSense_20191101_183418_553_1572629658419.59_782_0_RGB.jpg'
+        xyzimgname = 'RealSense_20191101_183418_671_1572629658411.75_798_0_Depth.tiff'    
        
         model = build_model(cfg)
         process = ProcessImage(model, cfg)
         original_image = process.load_rgb_image(os.path.join(imgdir,rgbimgname))
-        # original_image = process.load_xyz_image(os.path.join(imgdir,xyzimgname))
-        # original_image = original_image.astype(np.uint8)
-
         imgtensor = process.maketensor(original_image)
         image = process.preprocess_tensor(imgtensor)
+
+        temp = image.tensor.permute(2, 3, 1, 0)
+        test1 = temp.reshape((temp.shape[0],temp.shape[1],temp.shape[2]))
+        test2 = test1.to("cpu").numpy()[...,::-1]
+
+        r_tensor = test2[:,:,2]
+        g_tensor = test2[:,:,1]
+        b_tensor = test2[:,:,0]
+
+        # this is the R (RGB) or the X (XYZ) channel
+        plt.imshow(r_tensor)
+        print(np.min(r_tensor))
+        print(np.max(r_tensor))
+        plt.show() 
+
+        # this is the G (RGB) or the Y (XYZ) channel
+        plt.imshow(g_tensor)
+        print(np.min(g_tensor))
+        print(np.max(g_tensor))
+        plt.show() 
+
+        # this is the B (RGB) or the Z (XYZ) channel
+        plt.imshow(b_tensor)
+        print(np.min(b_tensor))
+        print(np.max(b_tensor))
+        plt.show() 
+        print("stop")
 
         with torch.no_grad():
             # insert this line if you want to do testing/inference, for training please comment out
@@ -245,4 +276,117 @@ if __name__ == "__main__":
             bbox = instances.pred_boxes.tensor.numpy()
             amodal_masks = instances.pred_masks.numpy()
             modal_masks = instances.pred_visible_masks.numpy()
-            process.visualize(original_image , amodal_masks, modal_masks)
+            # process.visualize(original_image , amodal_masks, modal_masks)
+
+
+        # load the original xyz data (in float32):
+        # this is the preferred method (if it can be properly trained)
+        # maybe the weights should be randomly initialized
+        original_image = process.load_xyz_image(os.path.join(imgdir,xyzimgname))
+
+        # convert the xyz data to uint8 (not preferred as the x and y channels will shift)
+        # original_image = original_image.astype(np.uint8)
+
+        # scale the xyz data properly before conversion to uint8
+        # height, width = original_image.shape[:2]
+        # x = np.expand_dims(original_image[:,:,0], axis=2)
+        # y = np.expand_dims(original_image[:,:,1], axis=2)
+        # z = np.expand_dims(original_image[:,:,2], axis=2)
+
+        # np.clip(x, -500, 500, out=x)
+        # x = np.interp(x, (x.min(), x.max()), (0, 255))
+        # x = x.astype(np.uint8)
+
+        # np.clip(y, -500, 500, out=y)
+        # y = np.interp(y, (y.min(), y.max()), (0, 255))
+        # y = y.astype(np.uint8)
+
+        # np.clip(z, 400, 1000, out=z)
+        # z = np.interp(z, (z.min(), z.max()), (0, 255))
+        # z = z.astype(np.uint8)
+
+        # original_image = np.zeros((height, width, 3)).astype(np.uint8)
+        # original_image[:,:,0] = x.reshape((x.shape[0],x.shape[1]))
+        # original_image[:,:,1] = y.reshape((y.shape[0],y.shape[1]))
+        # original_image[:,:,2] = z.reshape((z.shape[0],z.shape[1]))
+
+        # be carefull the realsense is only a depth image (no xyz!!!)
+        imgtensor = process.maketensor(original_image)
+        image = process.preprocess_tensor(imgtensor)
+        
+        temp = image.tensor.permute(2, 3, 1, 0)
+        test1 = temp.reshape((temp.shape[0],temp.shape[1],temp.shape[2]))
+        test2 = test1.to("cpu").numpy()[...,::-1]
+
+        x_tensor = test2[:,:,2]
+        y_tensor = test2[:,:,1]
+        z_tensor = test2[:,:,0]
+
+        # this is the R (RGB) or the X (XYZ) channel
+        # plt.imshow(x_tensor)
+        # print(np.min(x_tensor))
+        # print(np.max(x_tensor))
+        # plt.show() 
+
+        # this is the G (RGB) or the Y (XYZ) channel
+        # plt.imshow(y_tensor)
+        # print(np.min(y_tensor))
+        # print(np.max(y_tensor))
+        # plt.show() 
+
+        # this is the B (RGB) or the Z (XYZ) channel
+        # plt.imshow(z_tensor)
+        # print(np.min(z_tensor))
+        # print(np.max(z_tensor))
+        # plt.show() 
+        print("stop")
+
+        masks = modal_masks
+
+        if masks.any():
+            maskstransposed = masks.transpose(1,2,0)
+
+            for i in range (maskstransposed.shape[-1]):
+                masksel = maskstransposed[:,:,i] # select the individual masks
+                masksel = transform.resize(masksel, (x_tensor.shape[0], x_tensor.shape[1])).astype(np.float32)
+
+                x_mask = np.multiply(x_tensor,masksel)
+                y_mask = np.multiply(y_tensor,masksel)
+                z_mask = np.multiply(z_tensor,masksel)
+
+                # black color (no depth values) is -2 so filter everything that is positive
+                x_mask = np.where(z_mask>=0,x_mask,0)
+                y_mask = np.where(z_mask>=0,y_mask,0)
+                z_mask = np.where(z_mask>=0,z_mask,0)
+                
+                z_mask_final_binary = np.minimum(z_mask,1).astype(np.uint8) 
+                final_mask_bool = z_mask_final_binary.astype(np.bool)
+                
+                xm = x_mask[final_mask_bool].flatten()
+                ym = y_mask[final_mask_bool].flatten()
+                zm = z_mask[final_mask_bool].flatten()
+
+                # invert the scales so that it can better visualize
+                xm = xm * -1
+                ym = ym * -1
+                zm = zm * -1
+
+                # calculate the distance between point-clouds:
+                # https://github.com/intel-isl/Open3D/blob/master/examples/Python/Basic/pointcloud.ipynb
+                # https://github.com/intel-isl/Open3D/blob/master/examples/Python/Advanced/pointcloud_outlier_removal.ipynb
+                # http://www.open3d.org/docs/release/tutorial/Basic/working_with_numpy.html
+
+                pcd = o3d.geometry.PointCloud()
+                xym = np.dstack((xm,ym))
+                xyzm = np.dstack((xym,zm))
+                xyzm = xyzm.reshape((xyzm.shape[1],xyzm.shape[2]))
+                xyzm = xyzm.astype(np.float64)
+                pcd.points = o3d.utility.Vector3dVector(xyzm)
+                o3d.visualization.draw_geometries([pcd])
+
+                print("Statistical oulier removal")
+                cl, ind = pcd.remove_statistical_outlier(nb_neighbors=50, std_ratio=0.1)
+                # display_inlier_outlier(pcd, ind)
+
+                aabb = cl.get_axis_aligned_bounding_box()
+                o3d.visualization.draw_geometries([cl, aabb])
