@@ -177,6 +177,7 @@ class ProcessImage:
 
         height, width = xyzimg.shape[:2]
         z_negative = False
+        save_image = False
 
         # check if the z-image has positive values or negative
         if np.min(z) < 0:
@@ -309,7 +310,7 @@ class ProcessImage:
             zts = np.multiply(zts,-1)
             zes = np.multiply(zes,-1)
 
-        return z, zts, zes, masks_final, cXs, cYs, diameters
+        return z, zts, zes, masks_final, cXs, cYs, diameters, max_depth_contribution, save_image
 
 
     def xyzimg_for_regression(self, xyzimg, boxes, masks, amodal_masks, zt, ze, diameter, numneighbors=50, stdev=5):
@@ -414,6 +415,7 @@ class ProcessImage:
 
         else:
             xyzf = np.array([])
+            error = True
 
         return xyzf, save_image, stop_program, error, numneighbors, stdev
 
@@ -521,14 +523,18 @@ class ProcessImage:
 
 if __name__ == "__main__":
     xyzimgdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/all_unique_frames_zeropadded"
-    amodaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/circle_annotations/test"
-    modaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/mask_annotations/test"
+    amodaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/circle_annotations/val"
+    modaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/mask_annotations/val"
 
     rootdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks"
-    writedir = os.path.join(rootdir, "test")
+    writedir = os.path.join(rootdir, "validation")
 
     gtfile = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/size_measurement_broccoli.ods"
     gt = get_data(gtfile)
+
+    redodir = "/home/pieterdeeplearn/Desktop/redodir"
+    redofile = "/home/pieterdeeplearn/Desktop/redo.ods"
+    redo = get_data(redofile)
 
     if os.path.isdir(amodaldir):
         all_files = os.listdir(amodaldir)
@@ -560,6 +566,10 @@ if __name__ == "__main__":
     start_i = 0
 
     for i in range(start_i, len(amodal_images)):
+        # for b in range(1, len(redo['Sheet1'])):
+        #     idx = redo['Sheet1'][b]
+        #     if int(idx[0]) == i:
+
         print(i)
         imgname = amodal_images[i]
         img = cv2.imread(os.path.join(amodaldir, imgname))
@@ -618,7 +628,7 @@ if __name__ == "__main__":
                 points = np.array(pts).astype(np.int32)
                 modal_mask = cv2.fillPoly(modal_mask, [points], [255], lineType=cv2.LINE_AA)
 
-        
+
         ret,thresh = cv2.threshold(amodal_mask,127,255,0)
         contours,hierarchy = cv2.findContours(thresh, 1, 2)
         cnt = contours[0]
@@ -629,8 +639,9 @@ if __name__ == "__main__":
         amodal_masks = amodal_mask.transpose(2,0,1).astype(np.bool)
         modal_masks = modal_mask.transpose(2,0,1).astype(np.bool)
 
-        z, ztop, zedge, masks, centers_x, centers_y, diameters = process.postprocess(xyz_image, modal_masks, amodal_masks, max_depth_range_broc=90, max_depth_contribution=0.02)
-
+        mdc = 0.05
+        z, ztop, zedge, masks, centers_x, centers_y, diameters, mdc, save_image_pp = process.postprocess(xyz_image, modal_masks, amodal_masks, max_depth_range_broc=90, max_depth_contribution=mdc)
+        
         real_diameter = 0
         for k in range(1, len(gt['Sheet1'])):
             diameter_data = gt['Sheet1'][k]
@@ -647,8 +658,46 @@ if __name__ == "__main__":
         cv2.namedWindow("Z Mask")
         cv2.moveWindow("Z Mask", 800, 0)
         cv2.imshow("Z Mask", zimg_mask)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        k = cv2.waitKey(0)
+
+        if k == ord('r'):
+            save_image_pp = False
+            cv2.destroyAllWindows()
+        elif k == 27: 
+            save_image_pp = True
+            cv2.destroyAllWindows()
+
+        while not save_image_pp:
+            mdc = mdc + 0.01
+            z, ztop, zedge, masks, centers_x, centers_y, diameters, mdc, save_image_pp = process.postprocess(xyz_image, modal_masks, amodal_masks, max_depth_range_broc=90, max_depth_contribution=mdc)
+
+            real_diameter = 0
+            for k in range(1, len(gt['Sheet1'])):
+                diameter_data = gt['Sheet1'][k]
+                if int(diameter_data[0]) == plant_id:
+                    real_diameter = diameter_data[1]
+
+            img_mask, zimg_mask, modal_mask_final = process.visualize_masks(img, z, bb, modal_masks, amodal_masks, ztop, zedge, centers_x, centers_y, diameters, str(real_diameter))
+            img_mask, zimg_mask = process.scale_images(img_mask, zimg_mask, 700, 700)    
+            
+            cv2.namedWindow("RGB Mask")
+            cv2.moveWindow("RGB Mask", 0, 0)
+            cv2.imshow("RGB Mask", img_mask) # Show image
+
+            cv2.namedWindow("Z Mask")
+            cv2.moveWindow("Z Mask", 800, 0)
+            cv2.imshow("Z Mask", zimg_mask)
+            k = cv2.waitKey(0)
+
+            if k == ord('r'):
+                save_image_pp = False
+                cv2.destroyAllWindows()
+            elif k == 27: 
+                save_image_pp = True
+                cv2.destroyAllWindows()
+
+            if save_image_pp:
+                break
 
         am = amodal_masks
         mm = modal_mask_final.transpose(2,0,1).astype(np.bool)
@@ -661,7 +710,7 @@ if __name__ == "__main__":
         if not error and not stop_program:
             while not save_image:
                 sd = sd-1
-                if sd <= 2:
+                if sd <= 3:
                     sd = sd - 0.25
                 xyzf, save_image, stop_program, error, nn, sd = process.xyzimg_for_regression(xyz_image, bb, mm, am, ztop, zedge, real_diameter, nn, sd)
                 # pcd, save_image, stop_program, error, nn, sd = process.pointnet(xyz_image, bb, mm, ztop, zedge, real_diameter, nn, sd)
