@@ -523,11 +523,11 @@ class ProcessImage:
 
 if __name__ == "__main__":
     xyzimgdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/all_unique_frames_zeropadded"
-    amodaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/circle_annotations/val"
-    modaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/mask_annotations/val"
+    amodaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/circle_annotations/test"
+    modaldir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/images_and_annotations_for_diameter_estimation/mask_annotations/test"
 
     rootdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks"
-    writedir = os.path.join(rootdir, "validation")
+    writedir = os.path.join(rootdir, "test")
 
     gtfile = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/size_measurement_broccoli.ods"
     gt = get_data(gtfile)
@@ -639,7 +639,7 @@ if __name__ == "__main__":
         amodal_masks = amodal_mask.transpose(2,0,1).astype(np.bool)
         modal_masks = modal_mask.transpose(2,0,1).astype(np.bool)
 
-        mdc = 0.05
+        mdc = 0.02
         z, ztop, zedge, masks, centers_x, centers_y, diameters, mdc, save_image_pp = process.postprocess(xyz_image, modal_masks, amodal_masks, max_depth_range_broc=90, max_depth_contribution=mdc)
         
         real_diameter = 0
@@ -668,7 +668,7 @@ if __name__ == "__main__":
             cv2.destroyAllWindows()
 
         while not save_image_pp:
-            mdc = mdc + 0.01
+            mdc = mdc + 0.02
             z, ztop, zedge, masks, centers_x, centers_y, diameters, mdc, save_image_pp = process.postprocess(xyz_image, modal_masks, amodal_masks, max_depth_range_broc=90, max_depth_contribution=mdc)
 
             real_diameter = 0

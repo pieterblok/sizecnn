@@ -133,19 +133,19 @@ class regression_dataset(Dataset):
 
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
             # from all masks these are the extremes:
-            # min_x: -173.15782
-            # max_x: 266.65762
-            # min_y: -231.14442
-            # max_y: 210.61345
+            # min_x: -174.15604
+            # max_x: 266.94846
+            # min_y: -230.35011
+            # max_y: 214.26303
             # min_z: 0.0
-            # max_z: 751.0
+            # max_z: 747
 
             min_x = float(-267)
             max_x = float(267)
-            min_y = float(-232)
-            max_y = float(232)
+            min_y = float(-231)
+            max_y = float(231)
             min_z = float(0)
-            max_z = float(755)
+            max_z = float(750)
             
             image[:,:,0] = (image[:,:,0] - min_x) / (max_x - min_x)
             image[:,:,1] = (image[:,:,1] - min_y) / (max_y - min_y)
