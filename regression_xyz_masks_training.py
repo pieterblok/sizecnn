@@ -19,6 +19,7 @@ import time
 from PIL import Image
 
 # specifically needed to work with float32 tiff files
+import tifffile
 import skimage.transform
 
 # this class is altered from class MonkeySpecies10Dataset from the opencv course (week 7)
@@ -115,8 +116,7 @@ class regression_dataset(Dataset):
         For given index, return images with resize and preprocessing.
         """
         
-        with open(self.data_dict['image_path'][idx], 'rb') as f:
-            image = np.load(f)
+        image = tifffile.imread(self.data_dict['image_path'][idx])
 
 
         if self.image_shape is not None:
@@ -133,19 +133,19 @@ class regression_dataset(Dataset):
 
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
             # from all masks these are the extremes:
-            # min_x: -174.15604
+            # min_x: -276.31516
             # max_x: 266.94846
             # min_y: -230.35011
-            # max_y: 214.26303
+            # max_y: 280.16794
             # min_z: 0.0
-            # max_z: 747
+            # max_z: 775.12286
 
-            min_x = float(-267)
-            max_x = float(267)
-            min_y = float(-231)
-            max_y = float(231)
+            min_x = float(-285)
+            max_x = float(285)
+            min_y = float(-285)
+            max_y = float(285)
             min_z = float(0)
-            max_z = float(750)
+            max_z = float(780)
             
             image[:,:,0] = (image[:,:,0] - min_x) / (max_x - min_x)
             image[:,:,1] = (image[:,:,1] - min_y) / (max_y - min_y)
@@ -163,7 +163,7 @@ class regression_dataset(Dataset):
 
 
 # data root directory
-data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks'
+data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense_ensenso/xyz_masks'
 
 preprocess = transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5))
 

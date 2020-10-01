@@ -17,12 +17,12 @@ rcParams['font.family'] = 'serif'
 # use open3d for some pointcloud filtering (pip install open3d)
 import open3d as o3d
 from pyexcel_ods import get_data
-from tifffile import imsave
+import tifffile
 import csv
 
 
 if __name__ == "__main__":
-    readdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks"
+    readdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense_ensenso/xyz_masks"
     folders = ["training", "validation", "test"]
 
     min_x = 0
@@ -31,13 +31,14 @@ if __name__ == "__main__":
     max_y = 0
     min_z = 9999
     max_z = 0
+    counter = 0
 
     for k in range(len(folders)):
         curdir = os.path.join(readdir, folders[k])
 
         if os.path.isdir(curdir):
             all_files = os.listdir(curdir)
-            xyz_images = [x for x in all_files if "xyz" in x and ".npy" in x]
+            xyz_images = [x for x in all_files if "xyz" in x and ".tiff" in x]
             xyz_labels = [x for x in all_files if "xyz" in x and ".txt" in x]
             xyz_images.sort()
             xyz_labels.sort()
@@ -46,10 +47,10 @@ if __name__ == "__main__":
         for i in range(len(xyz_images)):
             xyzimgname = xyz_images[i]
             print(xyzimgname)
+            counter = counter+1
 
             ## load the xyz image
-            with open(os.path.join(curdir, xyzimgname), 'rb') as f:
-                xyz_image = np.load(f)
+            xyz_image = tifffile.imread(os.path.join(curdir, xyzimgname))
 
             # extract the extreme x, y and z values for normalization
             min_x_mask = np.min(xyz_image[:,:,0])
@@ -83,7 +84,7 @@ if __name__ == "__main__":
                 max_z = max_z_mask
                 print("max_z set to: " + str(max_z))          
 
-
+print("total number of images analyzed: " + str(counter))
 print("min_x: " + str(min_x))
 print("max_x: " + str(max_x))
 print("min_y: " + str(min_y))

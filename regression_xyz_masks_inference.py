@@ -20,6 +20,7 @@ import numpy as np
 from PIL import Image
 
 # specifically needed to work with float32 tiff files
+import tifffile
 import skimage.transform
 import csv
 
@@ -117,8 +118,7 @@ class regression_dataset(Dataset):
         For given index, return images with resize and preprocessing.
         """
         
-        with open(self.data_dict['image_path'][idx], 'rb') as f:
-            image = np.load(f)
+        image = tifffile.imread(self.data_dict['image_path'][idx])
         
         if self.image_shape is not None:
             # alternative for transforms.Resize
@@ -134,19 +134,19 @@ class regression_dataset(Dataset):
 
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
             # from all masks these are the extremes:
-            # min_x: -174.15604
+            # min_x: -276.31516
             # max_x: 266.94846
             # min_y: -230.35011
-            # max_y: 214.26303
+            # max_y: 280.16794
             # min_z: 0.0
-            # max_z: 747
+            # max_z: 775.12286
 
-            min_x = float(-267)
-            max_x = float(267)
-            min_y = float(-231)
-            max_y = float(231)
+            min_x = float(-285)
+            max_x = float(285)
+            min_y = float(-285)
+            max_y = float(285)
             min_z = float(0)
-            max_z = float(750)
+            max_z = float(780)
             
             image[:,:,0] = (image[:,:,0] - min_x) / (max_x - min_x)
             image[:,:,1] = (image[:,:,1] - min_y) / (max_y - min_y)
@@ -165,7 +165,7 @@ class regression_dataset(Dataset):
 
 
 # data root directory
-data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense/xyz_masks'
+data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense_ensenso/xyz_masks'
 
 preprocess = transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5))
 
@@ -174,7 +174,7 @@ print('Length of the test dataset: {}'.format(len(test_dataset)))
 
 # use cuda:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = torch.load('./weights/Dreal_regression_Resnext101_32x8d_xyz_masks_400x400pixels_4channel/epoch_063.pt')
+model = torch.load('./weights/Dreal_regression_Resnext101_32x8d_xyz_masks_570x570pixels_4channel/epoch_041.pt')
 model.to(device)
 model.eval()
 
@@ -191,7 +191,12 @@ with open(os.path.join(writedir1, 'broccoli_diameter_regression.csv'), 'w', newl
 for i in range(len(test_dataset)):
     image, gt = regression_dataset.__getitem__(test_dataset, i)
     image_path = test_dataset.data_dict['image_path'][i]
-    plant_id = int(image_path.split("/")[-1].split("_")[2].split("plant")[-1])
+
+    if "plant" in image_path:
+        plant_id = int(image_path.split("/")[-1].split("_")[2].split("plant")[-1])
+    else:
+        plant_id = int(image_path.split("/")[-1].split("_")[0])
+
     image = Variable(image, requires_grad=True)
     image = image.unsqueeze(0)
     image = image.to(device)
