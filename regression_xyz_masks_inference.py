@@ -18,6 +18,7 @@ import os
 import numpy as np
 
 from PIL import Image
+from pyexcel_ods import get_data
 
 # specifically needed to work with float32 tiff files
 import tifffile
@@ -77,7 +78,7 @@ class regression_dataset(Dataset):
         
         # training data path, this will be used as data root if train = True
         if train:
-            img_dir = os.path.join(data_root, 'training')
+            img_dir = os.path.join(data_root, 'train')
             
         # validation data path, this will be used as data root if train = False
         else:
@@ -135,18 +136,18 @@ class regression_dataset(Dataset):
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
             # from all masks these are the extremes:
             # min_x: -276.31516
-            # max_x: 266.94846
-            # min_y: -230.35011
-            # max_y: 280.16794
+            # max_x: 321.93063
+            # min_y: -256.23294
+            # max_y: 277.78787
             # min_z: 0.0
-            # max_z: 775.12286
+            # max_z: 1090.2516
 
-            min_x = float(-285)
-            max_x = float(285)
-            min_y = float(-285)
-            max_y = float(285)
+            min_x = float(-280)
+            max_x = float(330)
+            min_y = float(-280)
+            max_y = float(280)
             min_z = float(0)
-            max_z = float(780)
+            max_z = float(1100)
             
             image[:,:,0] = (image[:,:,0] - min_x) / (max_x - min_x)
             image[:,:,1] = (image[:,:,1] - min_y) / (max_y - min_y)
@@ -165,7 +166,7 @@ class regression_dataset(Dataset):
 
 
 # data root directory
-data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense_ensenso/xyz_masks'
+data_root = '/home/pieterdeeplearn/harvestcnn/datasets/train_val_test_files/xyz_masks'
 
 preprocess = transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5))
 
@@ -174,28 +175,42 @@ print('Length of the test dataset: {}'.format(len(test_dataset)))
 
 # use cuda:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = torch.load('./weights/Dreal_regression_Resnext101_32x8d_xyz_masks_570x570pixels_4channel/epoch_041.pt')
+model = torch.load('./weights/Dreal_regression_Resnext101_32x8d_unfiltered_xyz_masks_600x600pixels_4channel/epoch_019.pt')
 model.to(device)
 model.eval()
 
 diameters = []
 diffs = []
+vprs = []
+gtsizes = []
 
-writedir1 = "/home/pieterdeeplearn/harvestcnn/results/dl_regression_4channel"
+writedir1 = "./results/dl_regression_4channel_unfiltered"
 
 with open(os.path.join(writedir1, 'broccoli_diameter_regression.csv'), 'w', newline='') as csvfile:
     csvwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
-    csvwriter.writerow(['plant_id', 'real-world diameter (mm)', 'diameter regression (mm)', 'difference in diameter (mm)'])
+    csvwriter.writerow(['image_id', 'real-world diameter (mm)', 'diameter regression (mm)', 'difference in diameter (mm)', 'visible pixel ratio'])
 
+vprfile = '/home/pieterdeeplearn/harvestcnn/datasets/train_val_test_files/visible_pixel_ratios.ods'
+vpr = get_data(vprfile)
 
 for i in range(len(test_dataset)):
     image, gt = regression_dataset.__getitem__(test_dataset, i)
     image_path = test_dataset.data_dict['image_path'][i]
 
-    if "plant" in image_path:
-        plant_id = int(image_path.split("/")[-1].split("_")[2].split("plant")[-1])
-    else:
-        plant_id = int(image_path.split("/")[-1].split("_")[0])
+    image_name, file_extension = os.path.splitext(image_path)
+    basename = os.path.basename(image_name)
+    xyzname = basename + ".tiff"
+    rgbname = basename.replace("xyz", "rgb")
+    rgbname = rgbname + ".png"
+
+    for k in range(1, len(vpr['visible_pixel_ratios'])):
+        vpr_data = vpr['visible_pixel_ratios'][k]
+        if len(vpr_data) > 0 :
+            rgbname_read = vpr_data[0]
+            
+            if rgbname == rgbname_read:
+                vpr_rgb = vpr_data[2]
+                vprs.append(vpr_rgb)
 
     image = Variable(image, requires_grad=True)
     image = image.unsqueeze(0)
@@ -206,11 +221,12 @@ for i in range(len(test_dataset)):
     pred = round(float(prediction.ravel()), 1)
     diff = round(float(np.subtract(gt, prediction)), 1)
     diameters.append([gt, pred, diff])
+    gtsizes.append(gt)
     diffs.append(diff)
 
     with open(os.path.join(writedir1, 'broccoli_diameter_regression.csv'), 'a', newline='') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        csvwriter.writerow([plant_id, round(gt, 1), pred, diff])
+        csvwriter.writerow([xyzname, round(gt, 1), pred, diff, vpr_rgb])
 
 
 np.set_printoptions(formatter={'float_kind':'{:f}'.format})
@@ -224,16 +240,54 @@ print("Biggest error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format
 
 error_below5 = np.where(np.logical_and(np.asarray(diffs)>=-5, np.asarray(diffs)<=5))
 error_below10 = np.where(np.logical_and(np.asarray(diffs)>=-10, np.asarray(diffs)<=10))
+error_above15 = np.where(np.logical_or(np.asarray(diffs)<-15, np.asarray(diffs)>15))
 
 perc_below5 = (len(error_below5[0]) / len(test_dataset)) * 100
 perc_below10 = (len(error_below10[0]) / len(test_dataset)) * 100
+perc_above15 = (len(error_above15[0]) / len(test_dataset)) * 100
 
 print()
-print("Percentage of estimates that was within 5 mm from the ground truth {0:.2f} %".format(perc_below5))
-print("Percentage of estimates that was within 10 mm from the ground truth {0:.2f} %".format(perc_below10))
+print("Number & percentage of estimates that was within 5 mm from the ground truth: {0:.0f} ({1:.1f}%)".format(len(error_below5[0]), perc_below5))
+print("Number & percentage of estimates that was within 10 mm from the ground truth: {0:.0f} ({1:.1f}%)".format(len(error_below10[0]), perc_below10))
+print("Number & percentage of estimates that was above 15 mm from the ground truth: {0:.0f} ({1:.1f}%)".format(len(error_above15[0]), perc_above15))
 
-plt.hist(diffs)
-plt.title("Difference between ground truth and regression network")
-plt.xlabel("Difference (mm)")
-plt.ylabel("Occurence")
+## histogram plotting
+bins = list(np.arange(-20,25,5))
+counts, bins, patches = plt.hist(diffs, bins)
+plt.xticks(range(-20,25,5))
+plt.yticks(range(0,200,25))
+plt.grid(axis='y', alpha=0.75)
+plt.title("Diameter error between ground truth and deep-learning regression")
+plt.xlabel("Diameter error (mm)")
+plt.ylabel("Frequency")
+
+bin_centers = 0.5 * np.diff(bins) + bins[:-1]
+for count, x in zip(counts, bin_centers):
+    if count < 10 :
+        plt.annotate('n={:.0f}'.format(count), (x-1, count+2))
+    elif count < 100:
+        plt.annotate('n={:.0f}'.format(count), (x-1.5, count+2))
+    else:
+        plt.annotate('n={:.0f}'.format(count), (x-2, count+2))
+
+plt.show()
+
+## scatter plot for the occlusion rate
+occlusion_perc =  [(1-ele)*100 for ele in vprs]
+diffs_abs =  [abs(ele) for ele in diffs]
+plt.plot(occlusion_perc, diffs_abs, 'o', color='blue', alpha=0.75)
+plt.xticks(range(0,110,10))
+plt.yticks(range(0,21,5))
+plt.title("Diameter error as a function of the occlusion rate")
+plt.xlabel("Occlusion rate (%)")
+plt.ylabel("Absolute error on diameter (mm)")
+plt.show()
+
+## scatter plot for the gt sizes
+plt.plot(gtsizes, diffs_abs, 'o', color='blue', alpha=0.75)
+plt.xticks(range(50,275,25))
+plt.yticks(range(0,21,5))
+plt.title("Diameter error as a function of the broccoli size")
+plt.xlabel("GT-size of the broccoli head (mm)")
+plt.ylabel("Absolute error on diameter (mm)")
 plt.show()

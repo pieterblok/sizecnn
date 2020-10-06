@@ -75,11 +75,11 @@ class regression_dataset(Dataset):
         
         # training data path, this will be used as data root if train = True
         if train:
-            img_dir = os.path.join(data_root, 'training')
+            img_dir = os.path.join(data_root, 'train')
             
         # validation data path, this will be used as data root if train = False
         else:
-            img_dir = os.path.join(data_root, 'validation')
+            img_dir = os.path.join(data_root, 'val')
             
         for img in os.listdir(img_dir):
             if img.endswith(".jpg") or img.endswith(".png") or img.endswith(".tiff") or img.endswith(".npy"):
@@ -134,18 +134,18 @@ class regression_dataset(Dataset):
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
             # from all masks these are the extremes:
             # min_x: -276.31516
-            # max_x: 266.94846
-            # min_y: -230.35011
-            # max_y: 280.16794
+            # max_x: 321.93063
+            # min_y: -256.23294
+            # max_y: 277.78787
             # min_z: 0.0
-            # max_z: 775.12286
+            # max_z: 1090.2516
 
-            min_x = float(-285)
-            max_x = float(285)
-            min_y = float(-285)
-            max_y = float(285)
+            min_x = float(-280)
+            max_x = float(330)
+            min_y = float(-280)
+            max_y = float(280)
             min_z = float(0)
-            max_z = float(780)
+            max_z = float(1100)
             
             image[:,:,0] = (image[:,:,0] - min_x) / (max_x - min_x)
             image[:,:,1] = (image[:,:,1] - min_y) / (max_y - min_y)
@@ -163,7 +163,7 @@ class regression_dataset(Dataset):
 
 
 # data root directory
-data_root = '/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense_ensenso/xyz_masks'
+data_root = '/home/pieterdeeplearn/harvestcnn/datasets/train_val_test_files/xyz_masks'
 
 preprocess = transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5))
 
@@ -215,10 +215,17 @@ optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=4e-3, amsgrad
 model.to(device)
 
 # training loop extracted from: https://github.com/spmallick/learnopencv/blob/master/Image-Classification-in-PyTorch/image_classification_using_transfer_learning_in_pytorch.ipynb
-epochs = 200
+epochs = 100
 start = time.time()
 history = []
 save_path = './weights/D_regression_xyz_masks_4channel'
+
+if os.path.exists('./weights/loss_log.txt'):
+    os.remove('./weights/loss_log.txt')
+
+with open('./weights/loss_log.txt', 'w') as txtfile:
+    txtfile.write("epoch,train_loss,val_loss")
+    txtfile.write("\r\n")
 
 for epoch in range(epochs):
     epoch_start = time.time()
@@ -300,6 +307,14 @@ for epoch in range(epochs):
     # Save the model for every epoch:
     torch.save(model, save_path+'/epoch_'+str(epoch+1).zfill(3)+'.pt')
 
+    with open('./weights/loss_log.txt', 'a') as txtfile:
+        txtfile.write(str(epoch+1))
+        txtfile.write(',')
+        txtfile.write('%.4f' % avg_train_loss)
+        txtfile.write(',')
+        txtfile.write('%.4f' % avg_valid_loss)
+        txtfile.write("\r\n")
+
 epoch = np.arange(epochs)
 train_loss_history = [loss[0] for loss in history]
 val_loss_history = [loss[1] for loss in history]
@@ -311,3 +326,5 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.ylim(0, 200)
 plt.show()
+
+txtfile.close()

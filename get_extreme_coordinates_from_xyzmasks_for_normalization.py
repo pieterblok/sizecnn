@@ -22,8 +22,8 @@ import csv
 
 
 if __name__ == "__main__":
-    readdir = "/home/pieterdeeplearn/harvestcnn/datasets/20201231_size_experiment_realsense_ensenso/xyz_masks"
-    folders = ["training", "validation", "test"]
+    readdir = "/home/pieterdeeplearn/harvestcnn/datasets/train_val_test_files/xyz_masks"
+    folders = ["train", "val", "test"]
 
     min_x = 0
     max_x = 0
