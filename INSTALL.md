@@ -57,7 +57,11 @@ Tested with: Pytorch 1.4 and torchvision 0.5<br/>
 - pip install nbformat==4.4
 - pip install scikit-image matplotlib imageio
 - pip install black isort flake8 flake8-bugbear flake8-comprehensions
-- pip install -e . <br/> <br/>
+- pip install -e . 
+- pip install tifffile
+- pip install pyexcel_ods
+- pip install tqdm 
+- pip install seaborn <br/> <br/>
 
 **2.5) Reboot/restart the computer (sudo reboot)** <br/> <br/>
 
