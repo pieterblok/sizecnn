@@ -135,17 +135,17 @@ class regression_dataset(Dataset):
 
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
             # from all masks these are the extremes:
-            # min_x: -276.31516
+            # min_x: -280.19092
             # max_x: 321.93063
             # min_y: -256.23294
-            # max_y: 277.78787
+            # max_y: 282.15326
             # min_z: 0.0
             # max_z: 1090.2516
 
-            min_x = float(-280)
+            min_x = float(-285)
             max_x = float(330)
-            min_y = float(-280)
-            max_y = float(280)
+            min_y = float(-260)
+            max_y = float(285)
             min_z = float(0)
             max_z = float(1100)
             
@@ -175,7 +175,7 @@ print('Length of the test dataset: {}'.format(len(test_dataset)))
 
 # use cuda:
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = torch.load('./weights/Dreal_regression_Resnext101_32x8d_unfiltered_xyz_masks_600x600pixels_4channel/epoch_019.pt')
+model = torch.load('./weights/Dreal_regression_Resnext101_32x8d_unfiltered_xyz_masks_600x600pixels_4channel/epoch_096.pt')
 model.to(device)
 model.eval()
 
@@ -229,65 +229,76 @@ for i in range(len(test_dataset)):
         csvwriter.writerow([xyzname, round(gt, 1), pred, diff, vpr_rgb])
 
 
-np.set_printoptions(formatter={'float_kind':'{:f}'.format})
+if diffs:
+    np.set_printoptions(formatter={'float_kind':'{:f}'.format})
 
-print("Diameters overview:")
-for i in range(len(diameters)):
-    print(diameters[i])
-print()
-print("Average error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diffs))))
-print("Biggest error of D when testing on {0:.0f} broccoli's: {1:.1f} mm".format(len(test_dataset), np.max(np.abs(diffs))))
+    print("Average error when sizing {0:.0f} broccoli heads: {1:.1f} mm".format(len(test_dataset), np.average(np.abs(diffs))))
+    print("Biggest error when sizing {0:.0f} broccoli heads: {1:.1f} mm".format(len(test_dataset), np.max(np.abs(diffs))))
 
-error_below5 = np.where(np.logical_and(np.asarray(diffs)>=-5, np.asarray(diffs)<=5))
-error_below10 = np.where(np.logical_and(np.asarray(diffs)>=-10, np.asarray(diffs)<=10))
-error_above15 = np.where(np.logical_or(np.asarray(diffs)<-15, np.asarray(diffs)>15))
+    def ceil_to_25(x, base=25):
+        if x >= 0:
+            rounded = base * np.ceil(x/base)
+        else:
+            rounded = base * np.floor(x/base)
+        return rounded
 
-perc_below5 = (len(error_below5[0]) / len(test_dataset)) * 100
-perc_below10 = (len(error_below10[0]) / len(test_dataset)) * 100
-perc_above15 = (len(error_above15[0]) / len(test_dataset)) * 100
+    min_bin = ceil_to_25(-np.max(np.abs(diffs)))
+    max_bin = ceil_to_25(np.max(np.abs(diffs)))
+    bin_range = np.abs(max_bin - min_bin)
+    
+    digit_size = 12
+    text_size = 15
+    
+    
+    ## Plot the diameter error in a histogram
+    bins = list(np.arange(min_bin, max_bin + (bin_range/10), bin_range/10))
+    counts, bins, patches = plt.hist(diffs, bins)
+    try:
+        plt.xticks(range(int(min_bin), int(max_bin) + int(bin_range/10), int(bin_range/10)), fontsize=digit_size)
+        plt.yticks(range(0, int(np.max(counts)+10), int(np.max(counts)/10)), fontsize=digit_size)
+    except:
+        plt.xticks(fontsize=digit_size)
+        plt.yticks(fontsize=digit_size)
+    plt.grid(axis='y', alpha=0.75)
+    plt.title("Diameter error from the ground truth", fontsize=text_size)
+    plt.xlabel("Diameter error (mm)", fontsize=text_size)
+    plt.ylabel("Frequency", fontsize=text_size)
 
-print()
-print("Number & percentage of estimates that was within 5 mm from the ground truth: {0:.0f} ({1:.1f}%)".format(len(error_below5[0]), perc_below5))
-print("Number & percentage of estimates that was within 10 mm from the ground truth: {0:.0f} ({1:.1f}%)".format(len(error_below10[0]), perc_below10))
-print("Number & percentage of estimates that was above 15 mm from the ground truth: {0:.0f} ({1:.1f}%)".format(len(error_above15[0]), perc_above15))
+    bin_centers = 0.5 * np.diff(bins) + bins[:-1]
+    for count, x in zip(counts, bin_centers):
+        if count < 10 :
+            plt.annotate('n={:.0f}'.format(count), (x-6, count+2))
+        elif count < 100:
+            plt.annotate('n={:.0f}'.format(count), (x-7, count+2))
+        else:
+            plt.annotate('n={:.0f}'.format(count), (x-8, count+2))
 
-## histogram plotting
-bins = list(np.arange(-20,25,5))
-counts, bins, patches = plt.hist(diffs, bins)
-plt.xticks(range(-20,25,5))
-plt.yticks(range(0,200,25))
-plt.grid(axis='y', alpha=0.75)
-plt.title("Diameter error between ground truth and deep-learning regression")
-plt.xlabel("Diameter error (mm)")
-plt.ylabel("Frequency")
+    plt.show()
+    
 
-bin_centers = 0.5 * np.diff(bins) + bins[:-1]
-for count, x in zip(counts, bin_centers):
-    if count < 10 :
-        plt.annotate('n={:.0f}'.format(count), (x-1, count+2))
-    elif count < 100:
-        plt.annotate('n={:.0f}'.format(count), (x-1.5, count+2))
-    else:
-        plt.annotate('n={:.0f}'.format(count), (x-2, count+2))
+    ## Plot the diameter error as a function of the occlusion rate (scatter plot)
+    occlusion_perc =  [(1-ele)*100 for ele in vprs]
+    diffs_abs =  [abs(ele) for ele in diffs]
+    plt.plot(occlusion_perc, diffs_abs, 'o', color='blue', alpha=0.75)
+    plt.xticks(range(0, 110, 10), fontsize=digit_size)
+    try:
+        plt.yticks(range(0, int(max_bin), int(max_bin/10)), fontsize=digit_size)
+    except:
+        plt.yticks(fontsize=digit_size)
+    plt.title("Diameter error as a function of the occlusion rate", fontsize=text_size)
+    plt.xlabel("Occlusion rate (%)", fontsize=text_size)
+    plt.ylabel("Absolute error on diameter (mm)", fontsize=text_size)
+    plt.show()
+    
 
-plt.show()
-
-## scatter plot for the occlusion rate
-occlusion_perc =  [(1-ele)*100 for ele in vprs]
-diffs_abs =  [abs(ele) for ele in diffs]
-plt.plot(occlusion_perc, diffs_abs, 'o', color='blue', alpha=0.75)
-plt.xticks(range(0,110,10))
-plt.yticks(range(0,21,5))
-plt.title("Diameter error as a function of the occlusion rate")
-plt.xlabel("Occlusion rate (%)")
-plt.ylabel("Absolute error on diameter (mm)")
-plt.show()
-
-## scatter plot for the gt sizes
-plt.plot(gtsizes, diffs_abs, 'o', color='blue', alpha=0.75)
-plt.xticks(range(50,275,25))
-plt.yticks(range(0,21,5))
-plt.title("Diameter error as a function of the broccoli size")
-plt.xlabel("GT-size of the broccoli head (mm)")
-plt.ylabel("Absolute error on diameter (mm)")
-plt.show()
+    ## Plot the diameter error as a function of the broccoli size (scatter plot)
+    plt.plot(gtsizes, diffs_abs, 'o', color='blue', alpha=0.75)
+    plt.xticks(range(50,275,25), fontsize=digit_size)
+    try:
+        plt.yticks(range(0, int(max_bin), int(max_bin/10)), fontsize=digit_size)
+    except:
+        plt.yticks(fontsize=digit_size)
+    plt.title("Diameter error as a function of the broccoli size", fontsize=text_size)
+    plt.xlabel("Ground truth size of the broccoli head (mm)", fontsize=text_size)
+    plt.ylabel("Absolute error on diameter (mm)", fontsize=text_size)
+    plt.show()

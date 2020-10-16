@@ -133,17 +133,17 @@ class regression_dataset(Dataset):
 
             # alternative for transforms.ToTensor() which includes normalization between 0 and 1
             # from all masks these are the extremes:
-            # min_x: -276.31516
+            # min_x: -280.19092
             # max_x: 321.93063
             # min_y: -256.23294
-            # max_y: 277.78787
+            # max_y: 282.15326
             # min_z: 0.0
             # max_z: 1090.2516
 
-            min_x = float(-280)
+            min_x = float(-285)
             max_x = float(330)
-            min_y = float(-280)
-            max_y = float(280)
+            min_y = float(-260)
+            max_y = float(285)
             min_z = float(0)
             max_z = float(1100)
             
@@ -209,8 +209,10 @@ model.conv1.weight = torch.nn.Parameter(weights)
 print(model)
 
 # loss function and optimizer
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=4e-3, amsgrad=True)
+# criterion = nn.MSELoss()
+criterion = nn.SmoothL1Loss()
+# optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=4e-3, amsgrad=True)
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=4e-3, amsgrad=True)
 
 model.to(device)
 
