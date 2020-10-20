@@ -1,8 +1,5 @@
-# HarvestCNN 
-**Developed by Pieter Blok (pieter.blok@wur.nl)**
-<br/>
-<br/>
-**HarvestCNN uses ORCNN/Detectron2 (https://github.com/waiyulam/ORCNN) and an additional depth regression**
+# SizeCNN - a deep learning method to size the invisible crop
+![Size the invisible crop](./demo/20200819_143612133900_plant1188_rgb_trigger002.png?raw=true)
 
 
 ## Installation
@@ -10,19 +7,24 @@
 See [INSTALL.md](INSTALL.md).
 
 
-## Run the demo code
+## Features
 
-- download the pretrained coco weights: 
-https://dl.fbaipublicfiles.com/detectron2/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x/139653917/model_final_2d9806.pkl
-- place the weights-file in a folder called weights in the harvestcnn root directory
-- cd harvestcnn
-- cd demo
-- python demo.py --config-file ../configs/COCO-InstanceSegmentation/mask_rcnn_X_101_32x8d_FPN_3x.yaml --input ../demo/testImage20150714_084518730.jpg --opts MODEL.WEIGHTS ../weights/model_final_2d9806.pkl
-- Press ESC to close the window
+SizeCNN consists of two CNN's: 
+<br/>
+1. ORCNN (https://github.com/waiyulam/ORCNN), which is an extended Mask R-CNN that outputs two masks for each object:
+   1. The regular visible mask ***(purple mask below)***
+   2. An additional amodal mask of the visible and invisible pixels ***(green mask below)***
+![Amodal_Visible_Masks](./demo/20200819_143612133900_plant1188_rgb_trigger002_amodal_visible_masks.png?raw=true)
+2. A CNN regression network that estimates the diameter (mm) from the registered XYZ image, using the visible and the amodal mask
 
 
-## Citing ORCNN
+## License
+**Code developed by Pieter Blok (pieter.blok@wur.nl)**
+<br/>
+<br/>
+**SizeCNN uses ORCNN (https://github.com/waiyulam/ORCNN) and an additional deep learning regression**
 
+*Cite ORCNN:*
 ```BibTeX
 @article{DBLP:journals/corr/abs-1804-08864,
   author    = {Patrick Follmann and
