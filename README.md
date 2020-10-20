@@ -11,7 +11,7 @@ See [INSTALL.md](INSTALL.md).
 
 SizeCNN consists of two CNN's: 
 <br/>
-1. ORCNN (https://github.com/waiyulam/ORCNN), which is an extended Mask R-CNN that outputs two masks for each object:
+1. ORCNN (https://github.com/waiyulam/ORCNN), which is an extended Mask R-CNN network that outputs two masks for each object:
    1. The regular visible mask ***(purple mask below)***
    2. An additional amodal mask of the visible and invisible pixels ***(green mask below)***
 ![Amodal_Visible_Masks](./demo/20200819_143612133900_plant1188_rgb_trigger002_amodal_visible_masks.png?raw=true)
@@ -21,10 +21,8 @@ SizeCNN consists of two CNN's:
 ## License
 **Code developed by Pieter Blok (pieter.blok@wur.nl)**
 <br/>
-<br/>
-**SizeCNN uses ORCNN (https://github.com/waiyulam/ORCNN) and an additional deep learning regression**
 
-*Cite ORCNN:*
+Cite ORCNN:
 ```BibTeX
 @article{DBLP:journals/corr/abs-1804-08864,
   author    = {Patrick Follmann and
