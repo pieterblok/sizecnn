@@ -2,11 +2,6 @@
 ![Size the invisible crop](./demo/20200819_143612133900_plant1188_rgb_trigger002.png?raw=true)
 
 
-## Installation
-
-See [INSTALL.md](INSTALL.md).
-
-
 ## Features
 
 SizeCNN consists of two CNN's: 
@@ -18,27 +13,18 @@ SizeCNN consists of two CNN's:
 2. A CNN regression network that estimates the diameter (mm) from the registered XYZ image, using the visible and the amodal mask
 
 
+## Installation
+
+See [INSTALL.md](INSTALL.md).
+
+
+## Getting started
+1. Annotate the dataset, see [ANNOTATE.md](ANNOTATE.md)
+2. Train ORCNN, see [ORCNN_Train_and_Evaluate_AmodalVisibleMasks.ipynb](ORCNN_Train_and_Evaluate_AmodalVisibleMasks.ipynb)
+3. Train the CNN regression network, see 
+4. Infer the dataset using the trained ORCNN and regression network, see [Diameter_regression_AmodalVisibleMasks.ipynb](Diameter_regression_AmodalVisibleMasks.ipynb)
+
+
 ## License
 **Code developed by Pieter Blok (pieter.blok@wur.nl)**
 <br/>
-
-Cite ORCNN:
-```BibTeX
-@article{DBLP:journals/corr/abs-1804-08864,
-  author    = {Patrick Follmann and
-               Rebecca K{\"{o}}nig and
-               Philipp H{\"{a}}rtinger and
-               Michael Klostermann},
-  title     = {Learning to See the Invisible: End-to-End Trainable Amodal Instance
-               Segmentation},
-  journal   = {CoRR},
-  volume    = {abs/1804.08864},
-  year      = {2018},
-  url       = {http://arxiv.org/abs/1804.08864},
-  archivePrefix = {arXiv},
-  eprint    = {1804.08864},
-  timestamp = {Mon, 13 Aug 2018 16:46:01 +0200},
-  biburl    = {https://dblp.org/rec/journals/corr/abs-1804-08864.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
-}
-```
