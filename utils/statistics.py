@@ -1,4 +1,5 @@
 import os
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -11,6 +12,36 @@ def ceil_to_25(x, base=25):
         rounded = base * np.floor(x/base)
 
     return rounded
+
+
+def calculate_iou(annotations, predictions, classes_annotations, classes_predictions):
+    gtmasks = annotations.transpose(1,2,0).astype(np.uint8)
+    detmasks = predictions.transpose(1,2,0).astype(np.uint8)
+
+    gtmask_num = gtmasks.shape[-1]
+    detmask_num = detmasks.shape[-1]
+
+    IoU_matrix = np.zeros((gtmask_num,detmask_num)).astype(dtype=np.float32)
+
+    for i in range (detmask_num):
+        detclass = classes_predictions[i]
+        mask = detmasks[:,:,i]*255
+        maskimg = np.expand_dims(mask, axis=2) # creating a dummy alpha channel image.
+
+        for k in range (gtmask_num):
+            gtclass = classes_annotations[k]
+            gtmask = gtmasks[:,:,k]*255
+            gtmaskimg = np.expand_dims(gtmask, axis=2)
+
+            intersection_area = cv2.countNonZero(cv2.bitwise_and(maskimg,gtmaskimg))
+            union_area = cv2.countNonZero(cv2.bitwise_or(maskimg,gtmaskimg))
+
+            IoU = np.divide(intersection_area,union_area)
+
+            if detclass == gtclass:
+                IoU_matrix[k,i] = IoU
+
+    return IoU_matrix
 
 
 def histogram_error(diffs, min_bin, max_bin, bin_range, digit_size, text_size):
@@ -39,6 +70,17 @@ def histogram_error(diffs, min_bin, max_bin, bin_range, digit_size, text_size):
         plt.show()
     except:
         plt.show()
+
+
+def scatterplot_iou(ious, vprs, max_bin, digit_size, text_size):
+    occlusion_perc =  [(1-ele)*100 for ele in vprs]
+    plt.plot(occlusion_perc, ious, 'o', color='blue', alpha=0.75)
+    plt.xticks(range(0, 110, 10), fontsize=digit_size)
+    plt.yticks(list(np.arange(0, 1.1, 0.1)), fontsize=digit_size)
+    plt.title("Amodal IoU as a function of the occlusion rate", fontsize=text_size)
+    plt.xlabel("Occlusion rate (%)", fontsize=text_size)
+    plt.ylabel("Amodal Intersection over Union (IoU)", fontsize=text_size)
+    plt.show()
 
 
 def scatterplot_occlusion(diffs, vprs, max_bin, digit_size, text_size):

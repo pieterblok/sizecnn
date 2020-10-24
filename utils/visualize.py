@@ -2,6 +2,46 @@ import os
 import numpy as np
 import cv2
 
+
+def make_mask_img(input, height, width, method):
+    if method == "circle":
+        cps_X = input[0]
+        cps_Y = input[1]
+        ds = input[2]
+
+        masks = np.ones((len(cps_X),height,width)).astype(dtype=np.bool)
+
+        for k in range(len(cps_X)):
+            mask = np.zeros((height,width, 1),dtype = np.uint8)
+            cp_X = cps_X[k]
+            cp_Y = cps_Y[k]
+            r = np.divide(ds[k], 2)
+
+            mask = cv2.circle(mask, (int(cp_X),int(cp_Y)), int(r), [1], -1)
+            mask = mask.transpose(2,0,1).astype(np.bool)
+            masks[k,:,:] = np.multiply(masks[k,:,:],mask.reshape((height,width)))
+
+
+    if method == "polylines":
+        polylines = input
+        masks = np.ones((len(polylines),height,width)).astype(dtype=np.bool)
+
+        for k in range(len(polylines)):
+            xy = polylines[k]
+            mask = np.zeros((height,width, 1),dtype = np.uint8)
+
+            for w in range(len(xy)):
+                cur_xy = xy[w]
+                poly = np.array(cur_xy).reshape(-1,1,2)
+                mask = cv2.fillPoly(mask, np.int32([poly]), [1])
+
+            mask = mask.transpose(2,0,1).astype(np.bool)
+            masks[k,:,:] = np.multiply(masks[k,:,:],mask.reshape((height,width)))
+
+    return masks
+
+
+
 def visualize_results(img, z, boxes, masks, amodal_masks, zt, ze, cXs, cYs, diameters, diametersmm, idx, real_diameter, occlusion_rate):       
     masks = masks.astype(np.uint8)
     height, width = img.shape[:2]
