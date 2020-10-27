@@ -8,7 +8,7 @@ SizeCNN consists of two CNN's:
 <br/>
 1. ORCNN (https://github.com/waiyulam/ORCNN), which is an extended Mask R-CNN network that outputs two masks for each object:
    1. The regular visible mask ***(purple mask below)***
-   2. An additional amodal mask of the visible and invisible pixels ***(green mask below)***
+   2. An additional amodal mask of the visible and invisible pixels ***(green mask below)*** <br/>
 ![Amodal_Visible_Masks](./demo/20200819_143612133900_plant1188_rgb_trigger002_amodal_visible_masks.png?raw=true)
 2. A CNN regression network that estimates the diameter (mm) from the registered XYZ image, using the visible and the amodal mask
 
