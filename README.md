@@ -1,10 +1,9 @@
-# SizeCNN - a deep learning method to size the invisible crop
+# HarvestCNN - a deep learning method to size the invisible crop
 ![Size the invisible crop](./demo/20200819_143612133900_plant1188_rgb_trigger002.png?raw=true)
 
 
 ## Features
-
-SizeCNN consists of two CNN's: 
+HarvestCNN consists of two CNN's: 
 <br/>
 1. ORCNN (https://github.com/waiyulam/ORCNN), which is an extended Mask R-CNN network that outputs two masks for each object:
    1. The regular visible mask ***(purple mask below)***
@@ -14,7 +13,6 @@ SizeCNN consists of two CNN's:
 
 
 ## Installation
-
 See [INSTALL.md](INSTALL.md).
 
 
@@ -26,5 +24,8 @@ See [INSTALL.md](INSTALL.md).
 
 
 ## License
-**Code developed by Pieter Blok (pieter.blok@wur.nl)**
-<br/>
+HarvestCNN was forked from ORCNN, which was forked from Detectron2. HarvestCNN/ORCNN/Detectron2 is released under the [Apache 2.0 license](LICENSE). <br/>
+
+
+## Acknowledgements
+**HarvestCNN was developed by Pieter Blok (pieter.blok@wur.nl)**
