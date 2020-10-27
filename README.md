@@ -24,8 +24,9 @@ See [INSTALL.md](INSTALL.md).
 
 
 ## License
-HarvestCNN was forked from ORCNN, which was forked from Detectron2. HarvestCNN/ORCNN/Detectron2 is released under the [Apache 2.0 license](LICENSE). <br/>
+HarvestCNN was forked from ORCNN (https://github.com/waiyulam/ORCNN), which was forked from Detectron2 (https://github.com/facebookresearch/detectron2). <br/>
+As such, HarvestCNN is released under the [Apache 2.0 license](LICENSE). <br/>
 
 
 ## Acknowledgements
-**HarvestCNN was developed by Pieter Blok (pieter.blok@wur.nl)**
+HarvestCNN was developed by Pieter Blok (pieter.blok@wur.nl)
