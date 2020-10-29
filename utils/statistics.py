@@ -5,6 +5,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
+def ceil_to_decimal(x, base=0.1):
+    if x > 0:
+        rounded = base * np.ceil(x/base)
+    elif x < 0:
+        rounded = base * np.floor(x/base)
+    elif x == 0:
+        rounded = base + np.floor(x/base)
+
+    return rounded
+
+
 def ceil_to_25(x, base=25):
     if x >= 0:
         rounded = base * np.ceil(x/base)
@@ -70,6 +81,34 @@ def histogram_error(diffs, min_bin, max_bin, bin_range, digit_size, text_size):
         plt.show()
     except:
         plt.show()
+
+
+def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_bins, digit_size, text_size):
+    bins = list(np.arange(min_bin, max_bin + (bin_range/num_bins), bin_range/num_bins))
+    counts, bins, patches = plt.hist(np.clip(diffs, bins[0], bins[-2]), bins=bins)
+
+    bins_int = [int(bin) for bin in bins]
+    xlabels = np.array(bins_int).astype(str)
+    xlabels[0] = xlabels[1] + '<'
+    xlabels[-1] = '>' + xlabels[-2]
+    plt.xticks(bins, xlabels, fontsize=digit_size)
+    plt.yticks(range(0, 275, 25), fontsize=digit_size)
+
+    plt.grid(axis='y', alpha=0.75)
+    plt.title(label, fontsize=text_size)
+    plt.xlabel("Diameter error (mm)", fontsize=text_size)
+    plt.ylabel("Frequency", fontsize=text_size)
+
+    bin_centers = 0.5 * np.diff(bins) + bins[:-1]
+    for count, x in zip(counts, bin_centers):
+        if count < 10 :
+            plt.annotate('n={:.0f}'.format(count), (x-3, count+2))
+        elif count < 100:
+            plt.annotate('n={:.0f}'.format(count), (x-4, count+2))
+        else:
+            plt.annotate('n={:.0f}'.format(count), (x-5, count+2))
+    plt.tight_layout()
+    plt.show()
 
 
 def scatterplot_iou(ious, vprs, max_bin, digit_size, text_size):
