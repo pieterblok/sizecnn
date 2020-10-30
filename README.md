@@ -1,10 +1,10 @@
 # HarvestCNN - a deep learning method to size the invisible crop
 ![Size the invisible crop](./demo/20200819_143612133900_plant1188_rgb_trigger002.png?raw=true)
+<br/>
 
 
 ## Features
 HarvestCNN consists of two CNN's: 
-<br/>
 1. ORCNN (https://github.com/waiyulam/ORCNN), which is an extended Mask R-CNN network that outputs two masks for each object:
    1. The regular visible mask ***(purple mask below)***
    2. An additional amodal mask of the visible and invisible pixels ***(green mask below)*** <br/>
@@ -13,7 +13,7 @@ HarvestCNN consists of two CNN's:
 
 
 ## Installation
-See [INSTALL.md](INSTALL.md).
+See [INSTALL.md](INSTALL.md)
 
 
 ## Getting started
@@ -24,10 +24,15 @@ See [INSTALL.md](INSTALL.md).
 5. Estimate the diameters with the trained ORCNN and CNN regression network, see [Diameter_regression_AmodalVisibleMasks.ipynb](Diameter_regression_AmodalVisibleMasks.ipynb)
 
 
+## Other methods to estimate the diameter
+Besides HarvestCNN, it's also possible to estimate the diameter with two other methods:
+1. **Mask R-CNN + Filtering**, see [MaskRCNN_Filtering.md](MaskRCNN_Filtering.md) <br/>
+2. **ORCNN + Filtering**, see [ORCNN_Filtering.md](ORCNN_Filtering.md) <br/>
+
+
 ## License
-HarvestCNN was forked from ORCNN (https://github.com/waiyulam/ORCNN), which was forked from Detectron2 (https://github.com/facebookresearch/detectron2). <br/> <br/>
-As such, HarvestCNN is released under the [Apache 2.0 license](LICENSE). <br/>
+HarvestCNN was forked from ORCNN (https://github.com/waiyulam/ORCNN), which was forked from Detectron2 (https://github.com/facebookresearch/detectron2). As such, HarvestCNN is released under the [Apache 2.0 license](LICENSE). <br/>
 
 
 ## Acknowledgements
-HarvestCNN is developed by Pieter Blok (pieter.blok@wur.nl)
+HarvestCNN and the two other methods are developed by Pieter Blok (pieter.blok@wur.nl)
