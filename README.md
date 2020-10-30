@@ -26,8 +26,8 @@ See [INSTALL.md](INSTALL.md)
 
 ## Other methods to estimate the diameter
 Besides HarvestCNN, it's also possible to estimate the diameter with two other methods:
-1. **Mask R-CNN + Filtering**, see [MaskRCNN_Filtering.md](MaskRCNN_Filtering.md) <br/>
-2. **ORCNN + Filtering**, see [ORCNN_Filtering.md](ORCNN_Filtering.md) <br/>
+1. [MaskRCNN_Filtering.md](MaskRCNN_Filtering.md) <br/>
+2. [ORCNN_Filtering.md](ORCNN_Filtering.md) <br/>
 
 
 ## License
