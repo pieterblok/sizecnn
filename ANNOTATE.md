@@ -14,7 +14,7 @@ We recommend the following procedure, using the LabelMe program (https://github.
 2. Use distinct group ids, to link the amodal and the visible masks to the same object.
 3. If a visible mask comprises of two or more separated parts, please use the same group id.
 <br/> <br/> ![LabelMe procedure](./annotation/labelme_screenshot.png?raw=true)
-<br/> *This is an example of an amodal and visible mask annotation for two objects of the superclass "broccoli". Every broccoli object has one amodal mask (a red circle with the label "broccoli_amodal") and two visible masks (green polygons that are separated by a leaf, expressed with the labels "broccoli_visible"). To link the multiple masks to the same object, please use distinct group ids (see the (1) and (2) group id behind the annotation).*
+<br/> *This is an example of an amodal and visible mask annotation for two objects of the superclass "broccoli". Each broccoli object has one amodal mask (a red circle with the label "broccoli_amodal") and two visible masks (green polygons that are separated by a leaf, expressed with the labels "broccoli_visible"). To link the multiple masks to the same object, please use distinct group ids (see the (1) and (2) group id behind the annotation).*
 
 <br/> <br/>
 When the annotations are finished, please convert the annotations to one JSON file that can be processed by ORCNN:
@@ -46,7 +46,7 @@ Example: <br/> python labelme_to_orcnn.py --annotation_dir "./data/annotations/t
 | Argument        	| Description           						|
 | ----------------------|-----------------------------------------------------------------------|
 | --creator_url      	| this is an URL that is linked to the contributor 			|
-| --version      	| this is the version number of the dataset (input is an integer!)      |
+| --version      	| this is the version number of the dataset (input should be an integer!)      |
 | --license_url 	| this is an URL of the license      					|
-| --license_id 		| this is the indentifier of the license      				|
+| --license_id 		| this is the identifier of the license      				|
 | --license_name 	| this is the name of the license      					|
