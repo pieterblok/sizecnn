@@ -61,6 +61,7 @@ Tested with: Pytorch 1.4 and torchvision 0.5<br/>
 - pip install tifffile
 - pip install pyexcel_ods
 - pip install tqdm 
+- pip install pandas
 - pip install seaborn <br/> <br/>
 
 **2.5) Reboot/restart the computer (sudo reboot)** <br/> <br/>
