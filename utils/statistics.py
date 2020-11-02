@@ -16,6 +16,15 @@ def ceil_to_decimal(x, base=0.1):
     return rounded
 
 
+def ceil_to_5(x, base=5):
+    if x >= 0:
+        rounded = base * np.ceil(x/base)
+    else:
+        rounded = base * np.floor(x/base)
+
+    return rounded
+
+
 def ceil_to_25(x, base=25):
     if x >= 0:
         rounded = base * np.ceil(x/base)
