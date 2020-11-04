@@ -1,4 +1,4 @@
-# HarvestCNN - a deep learning method to size the invisible crop
+# SizeCNN - deep learning methods to size the occluded crop
 ![Size the invisible crop](./demo/20200819_143612133900_plant1188_rgb_trigger002.png?raw=true)
 <br/>
 
