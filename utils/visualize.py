@@ -42,7 +42,7 @@ def make_mask_img(input, height, width, method):
 
 
 
-def visualize_results(img, z, boxes, masks, amodal_masks, zt, ze, cXs, cYs, diameters, diametersmm, idx, real_diameter, occlusion_rate, amodal_iou):       
+def visualize_results(img, z, boxes, masks, amodal_masks, zt, ze, cXs, cYs, diameters, diametersmm, idx, real_diameter, occlusion_rate, amodal_iou, visible_ious):       
     masks = masks.astype(np.uint8)
     height, width = img.shape[:2]
 
@@ -138,28 +138,32 @@ def visualize_results(img, z, boxes, masks, amodal_masks, zt, ze, cXs, cYs, diam
             if k == idx:
                 text_str0 = "Occlusion rate: {:.2f}".format(occlusion_rate)
                 text_str1 = "Amodal IoU: {:.2f}".format(amodal_iou)
-                text_str2 = "Real diameter: {} mm".format(real_diameter)
+                text_str2 = "Visible IoU: {:.2f}".format(visible_ious[k]) 
                 text_str3 = "Estimation: {:.1f} mm".format(diametersmm[k])
-                text_str4 = "Difference: {:.1f} mm".format(np.subtract(float(real_diameter), diametersmm[k]))
+                text_str4 = "Real diameter: {} mm".format(real_diameter)
+                text_str5 = "Difference: {:.1f} mm".format(np.subtract(diametersmm[k], float(real_diameter)))
                 
                 text_w0, text_h0 = cv2.getTextSize(text_str0, font_face, font_scale, font_thickness)[0]
                 text_w1, text_h1 = cv2.getTextSize(text_str1, font_face, font_scale, font_thickness)[0]
                 text_w2, text_h2 = cv2.getTextSize(text_str2, font_face, font_scale, font_thickness)[0]
                 text_w3, text_h3 = cv2.getTextSize(text_str3, font_face, font_scale, font_thickness)[0]
                 text_w4, text_h4 = cv2.getTextSize(text_str4, font_face, font_scale, font_thickness)[0]
+                text_w5, text_h5 = cv2.getTextSize(text_str5, font_face, font_scale, font_thickness)[0]
 
                 if cXs[k] < (width/2):
-                    text_pt0 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]-60))
-                    text_pt1 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]-25))
-                    text_pt2 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+10))
-                    text_pt3 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+45))
-                    text_pt4 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+80))
+                    text_pt0 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]-70))
+                    text_pt1 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]-35))
+                    text_pt2 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]))
+                    text_pt3 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+35))
+                    text_pt4 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+70))
+                    text_pt5 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+105))
                 else:
-                    text_pt0 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]-60))
-                    text_pt1 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]-25))
-                    text_pt2 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+10))
-                    text_pt3 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+45))
-                    text_pt4 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+80))
+                    text_pt0 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]-70))
+                    text_pt1 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]-35))
+                    text_pt2 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]))
+                    text_pt3 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+35))
+                    text_pt4 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+70))
+                    text_pt5 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+105))
 
                 cv2.rectangle(img_mask, (text_pt0[0], text_pt0[1] + 7), (text_pt0[0] + text_w0, text_pt0[1] - text_h0 - 7), text_color1, -1)
                 cv2.putText(img_mask, text_str0, text_pt0, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
@@ -176,6 +180,9 @@ def visualize_results(img, z, boxes, masks, amodal_masks, zt, ze, cXs, cYs, diam
                 cv2.rectangle(img_mask, (text_pt4[0], text_pt4[1] + 7), (text_pt4[0] + text_w4, text_pt4[1] - text_h4 -7), text_color1, -1)
                 cv2.putText(img_mask, text_str4, text_pt4, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
 
+                cv2.rectangle(img_mask, (text_pt5[0], text_pt5[1] + 7), (text_pt5[0] + text_w5, text_pt5[1] - text_h5 -7), text_color1, -1)
+                cv2.putText(img_mask, text_str5, text_pt5, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
                 cv2.rectangle(zimg_mask, (text_pt0[0], text_pt0[1] + 7), (text_pt0[0] + text_w0, text_pt0[1] - text_h0 - 7), text_color1, -1)
                 cv2.putText(zimg_mask, text_str0, text_pt0, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
 
@@ -191,20 +198,34 @@ def visualize_results(img, z, boxes, masks, amodal_masks, zt, ze, cXs, cYs, diam
                 cv2.rectangle(zimg_mask, (text_pt4[0], text_pt4[1] + 7), (text_pt4[0] + text_w4, text_pt4[1] - text_h4 -7), text_color1, -1)
                 cv2.putText(zimg_mask, text_str4, text_pt4, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
 
+                cv2.rectangle(zimg_mask, (text_pt5[0], text_pt5[1] + 7), (text_pt5[0] + text_w5, text_pt5[1] - text_h5 -7), text_color1, -1)
+                cv2.putText(zimg_mask, text_str5, text_pt5, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
             else:
-                text_str0 = "Estimation: {:.1f} mm".format(diametersmm[k])
+                text_str0 = "Visible IoU: {:.2f}".format(visible_ious[k]) 
+                text_str1 = "Estimation: {:.1f} mm".format(diametersmm[k])
+
                 text_w0, text_h0 = cv2.getTextSize(text_str0, font_face, font_scale, font_thickness)[0]
+                text_w1, text_h1 = cv2.getTextSize(text_str1, font_face, font_scale, font_thickness)[0]
 
                 if cXs[k] < (width/2):
-                    text_pt0 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+10))
+                    text_pt0 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]-20))
+                    text_pt1 = (cXs[k] + int(diameters[k]/2) + 20, (cYs[k]+15))
                 else:
-                    text_pt0 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+10))
+                    text_pt0 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]-20))
+                    text_pt1 = (cXs[k] - int(diameters[k]/2) - 400, (cYs[k]+15))
 
                 cv2.rectangle(img_mask, (text_pt0[0], text_pt0[1] + 7), (text_pt0[0] + text_w0, text_pt0[1] - text_h0 - 7), text_color1, -1)
                 cv2.putText(img_mask, text_str0, text_pt0, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
 
+                cv2.rectangle(img_mask, (text_pt1[0], text_pt1[1] + 7), (text_pt1[0] + text_w1, text_pt1[1] - text_h1 - 7), text_color1, -1)
+                cv2.putText(img_mask, text_str1, text_pt1, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
                 cv2.rectangle(zimg_mask, (text_pt0[0], text_pt0[1] + 7), (text_pt0[0] + text_w0, text_pt0[1] - text_h0 - 7), text_color1, -1)
                 cv2.putText(zimg_mask, text_str0, text_pt0, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
+
+                cv2.rectangle(zimg_mask, (text_pt1[0], text_pt1[1] + 7), (text_pt1[0] + text_w1, text_pt1[1] - text_h1 - 7), text_color1, -1)
+                cv2.putText(zimg_mask, text_str1, text_pt1, font_face, font_scale, text_color2, font_thickness, cv2.LINE_AA)
 
     else:
         img_mask = img

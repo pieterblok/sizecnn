@@ -101,7 +101,7 @@ def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_b
     xlabels[0] = xlabels[1] + '<'
     xlabels[-1] = '>' + xlabels[-2]
     plt.xticks(bins, xlabels, fontsize=digit_size)
-    plt.yticks(range(0, 275, 25), fontsize=digit_size)
+    plt.yticks(range(0, 175, 25), fontsize=digit_size)
 
     plt.grid(axis='y', alpha=0.75)
     plt.title(label, fontsize=text_size)
@@ -111,14 +111,30 @@ def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_b
     bin_centers = 0.5 * np.diff(bins) + bins[:-1]
     for count, x in zip(counts, bin_centers):
         if count < 10 :
-            plt.annotate('n={:.0f}'.format(count), (x-3, count+2))
-        elif count < 100:
-            plt.annotate('n={:.0f}'.format(count), (x-4, count+2))
+            plt.annotate('n={:.0f}'.format(count), (x-2, count+2))
         else:
-            plt.annotate('n={:.0f}'.format(count), (x-5, count+2))
+            plt.annotate('n={:.0f}'.format(count), (x-3, count+2))
     plt.tight_layout()
     plt.show()
 
+    return bins, counts
+
+
+def counts_between(bins, counts, value):
+    idxs = np.where((np.asarray(bins) >= np.multiply(value, -1)) & (np.asarray(bins) < value))
+    sum_between = sum(counts[list(idxs[0])])
+    sum_all = sum(counts)
+    prec = (sum_between / sum_all) * 100
+    print("{0:.1f}% ({1:.0f} of {2:.0f}) of the estimates are within {3:.0f} mm from the real diameter".format(prec, sum_between, sum_all, value))
+
+
+def counts_larger(bins, counts, value):
+    idxs1 = np.where((np.asarray(bins) < np.multiply(value, -1)))
+    idxs2 = np.where((np.asarray(bins) > value))
+    sum_larger = sum(counts[list(idxs1[0])]) + sum(counts[list(idxs2[0]-1)])
+    sum_all = sum(counts)
+    prec = (sum_larger / sum_all) * 100
+    print("{0:.1f}% ({1:.0f} of {2:.0f}) of the estimates deviate more than {3:.0f} mm from the real diameter".format(prec, sum_larger, sum_all, value))
 
 def scatterplot_iou(ious, vprs, max_bin, digit_size, text_size):
     occlusion_perc =  [(1-ele)*100 for ele in vprs]
