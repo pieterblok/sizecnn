@@ -13,14 +13,15 @@ We recommend the following procedure, using the LabelMe program (https://github.
    2. one class for the visible masks (separator: [class]_visible)
 2. Use distinct group ids, to link the amodal and the visible masks to the same object.
 3. If a visible mask comprises of two or more separated parts, please use the same group id.
+4. For both the visible and the amodal masks, please use the following shapes in LabelMe: rectangle, circle, polygon. 
 <br/> <br/> ![LabelMe procedure](./annotation/labelme_screenshot.png?raw=true)
-<br/> *This is an example of an amodal and visible mask annotation for two objects of the superclass "broccoli". Each broccoli object has one amodal mask (a red circle with the label "broccoli_amodal") and two visible masks (green polygons that are separated by a leaf, expressed with the labels "broccoli_visible"). To link the multiple masks to the same object, please use distinct group ids (see the (1) and (2) group id behind the annotation).*
+<br/> *This is an example of an amodal and visible mask annotation of two objects of the superclass "broccoli". Each broccoli object has one amodal mask (a red circle with the label "broccoli_amodal") and two visible masks (green polygons that are separated by a leaf, expressed with the labels "broccoli_visible"). To link the multiple masks to the same object, please use distinct group ids (see the (1) and (2) group id behind the annotation).*
 
 <br/> <br/>
 When the annotations are finished, please convert the annotations to one JSON file that can be processed by ORCNN:
 <br/>
-1. In a new terminal, activate the virtual environment (for example: conda activate harvestcnn)
-2. Go to the annotation folder (cd /home/[user_name]/harvestcnn/annotation)
+1. In a new terminal, activate the virtual environment (for example: conda activate sizecnn)
+2. Go to the annotation folder (cd /home/[user_name]/sizecnn/annotation)
 3. Run the python file **labelme_to_orcnn.py**, using the appropriate arguments (see below): <br/> <br/>
 
 | Argument        	| Description           						|
