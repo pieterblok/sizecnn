@@ -92,9 +92,9 @@ def histogram_error(diffs, min_bin, max_bin, bin_range, digit_size, text_size):
         plt.show()
 
 
-def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_bins, digit_size, text_size):
+def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_bins, digit_size, text_size, color, savename):
     bins = list(np.arange(min_bin, max_bin + (bin_range/num_bins), bin_range/num_bins))
-    counts, bins, patches = plt.hist(np.clip(diffs, bins[0], bins[-2]), bins=bins)
+    counts, bins, patches = plt.hist(np.clip(diffs, bins[0], bins[-2]), bins=bins, color = color)
 
     bins_int = [int(bin) for bin in bins]
     xlabels = np.array(bins_int).astype(str)
@@ -104,7 +104,6 @@ def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_b
     plt.yticks(range(0, 175, 25), fontsize=digit_size)
 
     plt.grid(axis='y', alpha=0.75)
-    plt.title(label, fontsize=text_size)
     plt.xlabel("Diameter error (mm)", fontsize=text_size)
     plt.ylabel("Frequency", fontsize=text_size)
 
@@ -115,6 +114,7 @@ def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_b
         else:
             plt.annotate('n={:.0f}'.format(count), (x-3, count+2))
     plt.tight_layout()
+    plt.savefig(savename)
     plt.show()
 
     return bins, counts
@@ -125,8 +125,8 @@ def counts_between(bins, counts, value):
     sum_between = sum(counts[list(idxs[0])])
     sum_all = sum(counts)
     prec = (sum_between / sum_all) * 100
-    print("{0:.1f}% ({1:.0f} of {2:.0f}) of the estimates are within {3:.0f} mm from the real diameter".format(prec, sum_between, sum_all, value))
-
+    
+    return prec, sum_between, sum_all, value
 
 def counts_larger(bins, counts, value):
     idxs1 = np.where((np.asarray(bins) < np.multiply(value, -1)))
@@ -134,7 +134,8 @@ def counts_larger(bins, counts, value):
     sum_larger = sum(counts[list(idxs1[0])]) + sum(counts[list(idxs2[0]-1)])
     sum_all = sum(counts)
     prec = (sum_larger / sum_all) * 100
-    print("{0:.1f}% ({1:.0f} of {2:.0f}) of the estimates deviate more than {3:.0f} mm from the real diameter".format(prec, sum_larger, sum_all, value))
+
+    return prec, sum_larger, sum_all, value
 
 def scatterplot_iou(ious, vprs, max_bin, digit_size, text_size):
     occlusion_perc =  [(1-ele)*100 for ele in vprs]
