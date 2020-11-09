@@ -277,7 +277,11 @@ if __name__ == '__main__':
         writeimgdir = os.path.join(opt.write_dir,"PNGImages")
 
         if not os.path.exists(writeimgdir):
-            os.mkdir(writeimgdir) 
+            if not os.path.exists(opt.write_dir):
+                os.mkdir(opt.write_dir)
+                os.mkdir(writeimgdir)
+            else:
+                os.mkdir(writeimgdir)
         elif os.path.exists(writeimgdir) and os.path.isdir(writeimgdir):
             shutil.rmtree(writeimgdir)
             os.mkdir(writeimgdir) 
