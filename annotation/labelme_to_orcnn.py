@@ -327,7 +327,7 @@ if __name__ == '__main__':
                             'file_name': str("PNGImages/" + writename),
                             'height': height,
                             'width': width,
-                            'date_captured': date_modified,
+                            'date_captured': None,
                             'id': j
                         })
        
