@@ -28,7 +28,7 @@ We evaluated the sizing performance of the three methods on an independent test 
 
 The table and the graph below summarizes the average absolute diameter error (mm) for 10 occlusion rates. The number between the brackets is the standard deviation (mm).
  
-| Occlusion rate     | Mask R-CNN & Post-processing	| ORCNN & Post-processing	| ORCNN & CNN-Regression	|
+| Occlusion rate     | Mask R-CNN & Post-processing	| ORCNN & Post-processing	| ORCNN & Regression		|
 |:------------------:|:--------------------------------:|:-----------------------------:|:-----------------------------:|
 | 0.0 - 0.1          |  3.6 (3.1)       		| 4.0 (2.9)       		| 4.8 (3.7)			|
 | 0.1 - 0.2          |  3.2 (2.6)       		| 3.9 (2.4)       		| 5.9 (4.7)			|
