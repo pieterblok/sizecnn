@@ -47,7 +47,6 @@ The table and the graph below summarizes the average absolute diameter error (mm
 Our dataset will be uploaded soon. The dataset consists of 1613 RGB-D images of broccoli heads with various occlusion rates. 
 
 ## Pretrained weights
-We will soon upload the pretrained weights of Mask R-CNN, ORCNN and the CNN regression network.
 
 | Network	      	| Dataset         		| Weights													|
 | ----------------------|-------------------------------|---------------------------------------------------------------------------------------------------------------| 
