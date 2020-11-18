@@ -26,7 +26,8 @@ To compare the sizing performance of both methods, we also provide also a "base-
 ## Results
 We evaluated the sizing performance of the three methods on an independent test set of 487 RGB-D images. The broccoli heads in the test set had occlusion rates between 0% and 100%.
 
-The table and the graph below summarizes the average absolute diameter error (mm) for 10 occlusion rates. The number between the brackets is the standard deviation (mm). 
+The table and the graph below summarizes the average absolute diameter error (mm) for 10 occlusion rates. The number between the brackets is the standard deviation (mm).
+ 
 | Occlusion rate     | Mask R-CNN & Post-processing	| ORCNN & Post-processing	| ORCNN & CNN-Regression	|
 |:------------------:|:--------------------------------:|:-----------------------------:|:-----------------------------:|
 | 0.0 - 0.1          |  3.6 (3.1)       		| 4.0 (2.9)       		| 4.8 (3.7)			|
