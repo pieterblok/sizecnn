@@ -52,7 +52,7 @@ Our dataset will be uploaded soon. The dataset consists of 1613 RGB-D images of 
 | ----------------------|-------------------------------|---------------------------------------------------------------------------------------------------------------| 
 | Mask R-CNN		| Broccoli			| [model_0008999.pth](https://drive.google.com/file/d/14ruTcox7nPSBPxPPaYjETizJvS77mjVG/view?usp=sharing) 	|
 | ORCNN			| Broccoli			| [model_0007999.pth](https://drive.google.com/file/d/1q7elXawUTw-ThZ2b3BHIOoZrmBZiLoMG/view?usp=sharing) 	|
-| CNN Regression	| Broccoli			| [epoch_056.pt](https://drive.google.com/file/d/1-hfNOvu0yZNavE2Zlo9XAMkdRQ0YKgyP/view?usp=sharing) 		|	
+| Regression		| Broccoli			| [epoch_056.pt](https://drive.google.com/file/d/1-hfNOvu0yZNavE2Zlo9XAMkdRQ0YKgyP/view?usp=sharing) 		|	
 
 
 ## License
