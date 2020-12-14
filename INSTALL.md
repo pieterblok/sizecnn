@@ -59,7 +59,6 @@ Tested with: Pytorch 1.4 and torchvision 0.5<br/>
 - pip install black isort flake8 flake8-bugbear flake8-comprehensions
 - pip install -e . 
 - pip install tifffile
-- pip install pyexcel_ods
 - pip install tqdm 
 - pip install pandas
 - pip install seaborn 
