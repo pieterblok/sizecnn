@@ -43,7 +43,7 @@ The table and the graph below summarizes the average absolute diameter error (mm
 ![error_curve](./utils/diameter_error_occlusion_rate.jpg?raw=true)
 
 ## Dataset
-Our dataset will be uploaded soon. The dataset consists of 1613 RGB-D images of broccoli heads with various occlusion rates. 
+We will upload our dataset when our publication has being published. The dataset consists of 1613 RGB-D images of broccoli heads with various occlusion rates. 
 
 ## Pretrained weights
 
