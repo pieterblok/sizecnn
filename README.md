@@ -47,10 +47,10 @@ Our dataset will be uploaded soon. The dataset consists of 1613 RGB-D images of 
 
 ## Pretrained weights
 
-| Network	      	| Dataset         		| Weights													|
-| ----------------------|-------------------------------|---------------------------------------------------------------------------------------------------------------| 
-| Mask R-CNN		| Broccoli			| [model_0008999.pth](https://drive.google.com/file/d/14ruTcox7nPSBPxPPaYjETizJvS77mjVG/view?usp=sharing) 	|
-| ORCNN			| Broccoli			| [model_0007999.pth](https://drive.google.com/file/d/1q7elXawUTw-ThZ2b3BHIOoZrmBZiLoMG/view?usp=sharing) 	|	
+| Network     | Backbone         		| Dataset  | Weights													|
+| ------------|---------------------------------|----------|------------------------------------------------------------------------------------------------------------| 
+| Mask R-CNN  | ResNext_101_32x8d_FPN_3x	| Broccoli | [model_0008999.pth](https://drive.google.com/file/d/14ruTcox7nPSBPxPPaYjETizJvS77mjVG/view?usp=sharing) 	|
+| ORCNN	      | ResNext_101_32x8d_FPN_3x	| Broccoli | [model_0007999.pth](https://drive.google.com/file/d/1q7elXawUTw-ThZ2b3BHIOoZrmBZiLoMG/view?usp=sharing) 	|	
 
 
 ## License
