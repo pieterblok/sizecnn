@@ -14,9 +14,10 @@ See [INSTALL.md](INSTALL.md)
 
 
 ## Getting started
-The deep-learning method that can be used to estimate the diameter of occluded crops: [ORCNN.md](ORCNN.md) 
+The deep-learning method that can be used to estimate the diameter of occluded crops: <br/>
+[ORCNN.md](ORCNN.md) 
 
-The "base-line" method, which is based on Mask R-CNN and a circle fit method. This method can be compared to the ORCNN sizing method: 
+The "base-line" method, which is based on Mask R-CNN and a circle fit method. This method can be compared to the ORCNN sizing method: <br/>
 [MRCNN.md](MRCNN.md) 
 
 ## Results
