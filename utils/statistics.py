@@ -103,7 +103,6 @@ def histogram_error_fixed_scale(diffs, label, min_bin, max_bin, bin_range, num_b
     plt.xticks(bins, xlabels, fontsize=digit_size)
     plt.yticks(range(0, 175, 25), fontsize=digit_size)
 
-    plt.grid(axis='y', alpha=0.75)
     plt.xlabel("Diameter error (mm)", fontsize=text_size)
     plt.ylabel("Frequency", fontsize=text_size)
 
