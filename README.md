@@ -1,4 +1,4 @@
-# A deep learning method to size crops that are occluded
+# A deep learning method to estimate the size of occluded crops
 ![Size the invisible crop](./demo/20200819_143612133900_plant1188_rgb_trigger002.png?raw=true)
 <br/>
 
@@ -6,7 +6,7 @@
 ## Summary
 We provide a deep-learning method to better estimate the size of occluded objects. The method is based on ORCNN (https://github.com/waiyulam/ORCNN), which is an extended Mask R-CNN network that outputs two masks for each object:
 1. The regular visible mask ***(purple mask below)***
-2. An additional amodal mask of the visible and invisible pixels ***(green mask below)*** <br/>
+2. An additional amodal mask of the visible and the occluded pixels ***(green mask below)*** <br/>
 ![Amodal_Visible_Masks](./demo/20200819_143612133900_plant1188_rgb_trigger002_amodal_visible_masks.png?raw=true)
 
 ## Installation
@@ -44,7 +44,7 @@ The table and the graph below summarizes the average absolute diameter error (mm
 ![error_curve](./utils/diameter_error_occlusion_rate.jpg?raw=true)
 
 ## Dataset
-We will upload our dataset when our publication has being published. The dataset consists of 1613 RGB-D images of broccoli heads with various occlusion rates. 
+We will upload our broccoli dataset when our research paper is published. The dataset consists of 1613 RGB-D images of broccoli heads with systematic levels of leaf occlusion. 
 
 ## Pretrained weights
 
@@ -55,8 +55,19 @@ We will upload our dataset when our publication has being published. The dataset
 
 
 ## License
-Our software was forked from ORCNN (https://github.com/waiyulam/ORCNN), which was forked from Detectron2 (https://github.com/facebookresearch/detectron2). As such, our CNNs will be released under the [Apache 2.0 license](LICENSE). <br/>
+Our software was forked from ORCNN (https://github.com/waiyulam/ORCNN), which was forked from Detectron2 (https://github.com/facebookresearch/detectron2). As such, our CNN's will be released under the [Apache 2.0 license](LICENSE). <br/>
 
+
+## Citation
+Our research paper is currently under review. 
+<!---```
+@article{blok2021-size-estimation,
+  author  = {Pieter M. Blok and Eldert J. van Henten and Frits K. van Evert and Gert Kootstra},
+  journal = {Biosystems Engineering}, 
+  title   = {Image-based size estimation of broccoli heads under varying degrees of occlusion}, 
+  year    = {2021},
+}
+```--->
 
 ## Acknowledgements
-The methods were developed by Pieter Blok (pieter.blok@wur.nl)
+The size estimation methods were developed by Pieter Blok (pieter.blok@wur.nl)
