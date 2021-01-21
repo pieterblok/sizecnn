@@ -21,7 +21,7 @@ We recommend the following procedure, using the LabelMe program (https://github.
 When the annotations are finished, please convert the annotations to one JSON file that can be processed by ORCNN:
 <br/>
 1. In a new terminal, activate the virtual environment (for example: conda activate sizecnn)
-2. Go to the annotation folder (cd /home/[user_name]/sizecnn/annotation)
+2. Go to the annotation folder (cd /home/[user_name]/sizecnn/annotation, replace [user_name] by your own username)
 3. Run the python file **labelme_to_orcnn.py**, using the appropriate arguments (see below): <br/> <br/>
 
 | Argument        	| Description           						|
@@ -34,7 +34,8 @@ When the annotations are finished, please convert the annotations to one JSON fi
 | --contributor 	| your name     							|
 
 <br/>
-Example: <br/> python labelme_to_orcnn.py --annotation_dir "/home/[user_name]/sizecnn/data/annotations/train" --write_dir "/home/[user_name]/sizecnn/data/orcnn_annotations/train" --classes broccoli apple --amodal_separator _amodal --visible_separator _visible --description broccoli_apple_amodal_visible --contributor PieterBlok <br/> <br/> <br/> 
+Example (replace **[user_name]** by your own username): 
+<br/> python labelme_to_orcnn.py --annotation_dir "/home/[user_name]/sizecnn/data/annotations/train" --write_dir "/home/[user_name]/sizecnn/data/orcnn_annotations/train" --classes broccoli apple --amodal_separator _amodal --visible_separator _visible --description broccoli_apple_amodal_visible --contributor PieterBlok <br/> <br/> <br/> 
 
 ***Additional features of the labelme_to_orcnn.py program:***
 <br/>
