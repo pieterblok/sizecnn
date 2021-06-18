@@ -59,15 +59,20 @@ Our software was forked from ORCNN (https://github.com/waiyulam/ORCNN), which wa
 
 
 ## Citation
-Our research paper is currently under review. 
-<!---```
-@article{blok2021-size-estimation,
-  author  = {Pieter M. Blok and Eldert J. van Henten and Frits K. van Evert and Gert Kootstra},
-  journal = {Biosystems Engineering}, 
-  title   = {Image-based size estimation of broccoli heads under varying degrees of occlusion}, 
-  year    = {2021},
+Please cite our research article when using our software or dataset: 
+```
+@article{BLOK2021213,
+   title = {Image-based size estimation of broccoli heads under varying degrees of occlusion},
+   author = {Pieter M. Blok and Eldert J. van Henten and Frits K. van Evert and Gert Kootstra},
+   journal = {Biosystems Engineering},
+   volume = {208},
+   pages = {213-233},
+   year = {2021},
+   issn = {1537-5110},
+   doi = {https://doi.org/10.1016/j.biosystemseng.2021.06.001},
+   url = {https://www.sciencedirect.com/science/article/pii/S1537511021001203},
 }
-```--->
+```
 
 ## Acknowledgements
 The size estimation methods were developed by Pieter Blok (pieter.blok@wur.nl)
