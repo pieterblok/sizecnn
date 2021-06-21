@@ -80,6 +80,7 @@ Please cite our research article or dataset when using our software and/or datas
    title = {Data underlying the publication: Image-based size estimation of broccoli heads under varying degrees of occlusion},
    author = {Pieter M. Blok and Eldert J. van Henten and Frits K. van Evert and Gert Kootstra},
    year = {2021},
+   publisher = {4TU.ResearchData},
    doi = {https://doi.org/10.4121/13603787.v1},
    url = {https://data.4tu.nl/articles/dataset/Data_underlying_the_publication_Image-based_size_estimation_of_broccoli_heads_under_varying_degrees_of_occlusion/13603787/1},
 }
