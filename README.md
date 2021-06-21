@@ -44,7 +44,9 @@ The table and the graph below summarizes the average absolute diameter error (mm
 ![error_curve](./utils/diameter_error_occlusion_rate.jpg?raw=true)
 
 ## Dataset
-We will upload our broccoli dataset when our research paper is published. The dataset consists of 1613 RGB-D images of broccoli heads with systematic levels of leaf occlusion. 
+We have made our image-dataset publicly available under the NonCommercial-ShareAlike 4.0 license (CC BY-NC-SA 4.0). This means that our dataset can only be downloaded and used for non-commercial purposes. Please check whether you or your organization can use our dataset: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Our dataset consists of 1613 RGB-D images, including annotations and ground-truth measurements: https://doi.org/10.4121/13603787.v1 
 
 ## Pretrained weights
 
@@ -59,7 +61,7 @@ Our software was forked from ORCNN (https://github.com/waiyulam/ORCNN), which wa
 
 
 ## Citation
-Please cite our research article when using our software or dataset: 
+Please cite our research article or dataset when using our software and/or dataset: 
 ```
 @article{BLOK2021213,
    title = {Image-based size estimation of broccoli heads under varying degrees of occlusion},
@@ -71,6 +73,15 @@ Please cite our research article when using our software or dataset:
    issn = {1537-5110},
    doi = {https://doi.org/10.1016/j.biosystemseng.2021.06.001},
    url = {https://www.sciencedirect.com/science/article/pii/S1537511021001203},
+}
+```
+```
+@misc{BLOK2021,
+   title = {Data underlying the publication: Image-based size estimation of broccoli heads under varying degrees of occlusion},
+   author = {Pieter M. Blok and Eldert J. van Henten and Frits K. van Evert and Gert Kootstra},
+   year = {2021},
+   doi = {https://doi.org/10.4121/13603787.v1},
+   url = {https://data.4tu.nl/articles/dataset/Data_underlying_the_publication_Image-based_size_estimation_of_broccoli_heads_under_varying_degrees_of_occlusion/13603787/1},
 }
 ```
 
