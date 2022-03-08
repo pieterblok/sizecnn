@@ -300,7 +300,7 @@ if __name__ == '__main__':
             superclass = opt.classes[k]
             writedata['categories'].append({"supercategory": superclass, "id": (k+1), "name": superclass})
 
-        annotation_id = 0
+        annotation_id = 1   ## see: https://github.com/cocodataset/cocoapi/issues/507
 
         for j in tqdm(range (len(images))):
             imgname = images[j]
