@@ -1,4 +1,7 @@
 # A deep learning method to estimate the size of occluded crops
+**This repository has been moved to [GitHub](https://github.com/pieterblok/sizecnn).**
+<br/>
+
 ![Size the invisible crop](./demo/20200819_143612133900_plant1188_rgb_trigger002.png?raw=true)
 <br/>
 
@@ -46,7 +49,7 @@ The table and the graph below summarizes the average absolute diameter error (mm
 ## Dataset
 We have made our image-dataset publicly available under the NonCommercial-ShareAlike 4.0 license (CC BY-NC-SA 4.0). This means that our dataset can only be downloaded and used for non-commercial purposes. Please check whether you or your organization can use our dataset: https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-Our dataset consists of 1613 RGB-D images, including annotations and ground-truth measurements: https://doi.org/10.4121/13603787.v1 
+Our dataset consists of 1613 RGB-D images, including annotations and ground-truth measurements: https://doi.org/10.4121/13603787 
 
 ## Pretrained weights
 
@@ -57,7 +60,7 @@ Our dataset consists of 1613 RGB-D images, including annotations and ground-trut
 
 
 ## License
-Our software was forked from ORCNN (https://github.com/waiyulam/ORCNN), which was forked from Detectron2 (https://github.com/facebookresearch/detectron2). As such, our CNN's will be released under the [Apache 2.0 license](LICENSE). <br/>
+Our software was forked from [ORCNN](https://github.com/waiyulam/ORCNN), which was forked from [Detectron2](https://github.com/facebookresearch/detectron2). As such, our CNN's will be released under the [Apache 2.0 license](LICENSE). <br/>
 
 
 ## Citation
@@ -81,10 +84,10 @@ Please cite our research article or dataset when using our software and/or datas
    author = {Pieter M. Blok and Eldert J. van Henten and Frits K. van Evert and Gert Kootstra},
    year = {2021},
    publisher = {4TU.ResearchData},
-   doi = {https://doi.org/10.4121/13603787.v1},
-   url = {https://data.4tu.nl/articles/dataset/Data_underlying_the_publication_Image-based_size_estimation_of_broccoli_heads_under_varying_degrees_of_occlusion/13603787/1},
+   doi = {https://doi.org/10.4121/13603787},
+   url = {https://data.4tu.nl/articles/dataset/Data_underlying_the_publication_Image-based_size_estimation_of_broccoli_heads_under_varying_degrees_of_occlusion/13603787},
 }
 ```
 
 ## Acknowledgements
-The size estimation methods were developed by Pieter Blok (pieter.blok@wur.nl)
+The size estimation methods were developed by Pieter Blok.
